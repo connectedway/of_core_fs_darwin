@@ -29,7 +29,7 @@ BlueFileMatchLower (BLUE_INT flags, BLUE_CHAR c)
 }
 
 
-BLUE_UTIL_LIB BLUE_BOOL 
+BLUE_CORE_LIB BLUE_BOOL 
 BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
 {
   BLUE_BOOL ret ;

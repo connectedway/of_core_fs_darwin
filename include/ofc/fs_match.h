@@ -26,7 +26,7 @@
 extern "C" 
 {
 #endif
-  BLUE_UTIL_LIB BLUE_BOOL 
+  BLUE_CORE_LIB BLUE_BOOL 
   BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *string, BLUE_INT flags);
 #if defined(__cplusplus)
 }
