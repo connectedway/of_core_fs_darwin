@@ -13,10 +13,10 @@
  * under Blue Peach's terms
  */
 
-#include "BlueUtil/BlueUtil.h"
-#include "BlueUtil/BlueTypes.h"
-#include "BlueUtil/BlueC.h"
-#include "BlueFile/fs/Darwin/BlueFileMatch.h"
+#include "ofc/core.h"
+#include "ofc/types.h"
+#include "ofc/libc.h"
+#include "ofc/fs_match.h"
 
 static BLUE_CHAR 
 BlueFileMatchLower (BLUE_INT flags, BLUE_CHAR c)

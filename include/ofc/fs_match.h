@@ -15,8 +15,8 @@
 #if !defined(__BLUE_FILE_MATCH_H__)
 #define __BLUE_FILE_MATCH_H__
 
-#include "BlueUtil/BlueUtil.h"
-#include "BlueFile/BlueFile.h"
+#include "ofc/core.h"
+#include "ofc/file.h"
 
 #define	BLUE_FILE_MATCH_PATHNAME 0x01  /* No wildcard can ever match `/'. */
 #define	BLUE_FILE_MATCH_PERIOD 0x02  /* Leading `.' is matched explicitly. */

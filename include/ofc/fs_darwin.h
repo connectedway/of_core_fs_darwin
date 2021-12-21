@@ -13,8 +13,8 @@
 #if !defined(__BLUE_FSDARWIN_H__)
 #define __BLUE_FSDARWIN_H__
 
-#include "BlueUtil/BlueTypes.h"
-#include "BlueFile/BlueFile.h"
+#include "ofc/types.h"
+#include "ofc/file.h"
 
 #define BLUE_FS_DARWIN_BLOCK_SIZE 512
 
