@@ -2176,6 +2176,14 @@ static BLUE_BOOL BlueFSDarwinLockFileEx (BLUE_HANDLE hFile, BLUE_DWORD flags,
   return (ret) ;
 }
 
+static BLUE_BOOL BlueFSDarwinDismount (BLUE_LPCTSTR filename)
+{
+  BLUE_BOOL ret ;
+
+  ret = BLUE_TRUE ;
+  return (ret) ;
+}
+
 static BLUE_FILE_FSINFO BlueFSDarwinInfo =
   {
     &BlueFSDarwinCreateFile,
@@ -2205,7 +2213,7 @@ static BLUE_FILE_FSINFO BlueFSDarwinInfo =
     &BlueFSDarwinRemoveDirectory,
     &BlueFSDarwinUnlockFileEx,
     &BlueFSDarwinLockFileEx,
-    BLUE_NULL,
+    &BlueFSDarwinDismount,
     BLUE_NULL
   } ;
 
