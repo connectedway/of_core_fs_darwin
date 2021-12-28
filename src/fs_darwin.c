@@ -60,18 +60,18 @@ typedef enum
 typedef struct
 {
   BLUE_FSDARWIN_OP opcode ;
-  BLUE_HANDLE hEvent ;
-  BLUE_HANDLE hBusy ;
+  OFC_HANDLE hEvent ;
+  OFC_HANDLE hBusy ;
   OFC_INT dwResult ;
   OFC_INT Errno ;
   OFC_OFFT offset ;
-  BLUE_HANDLE hThread ;
+  OFC_HANDLE hThread ;
   OFC_LPCVOID lpBuffer ;
   OFC_DWORD nNumberOfBytes ;
   OFC_INT fd ;
 } BLUE_FSDARWIN_OVERLAPPED ;
 
-BLUE_HANDLE OfcFSDarwinAIOFreeQ ;
+OFC_HANDLE OfcFSDarwinAIOFreeQ ;
 static OFC_INT g_instance ;
 
 
@@ -124,7 +124,7 @@ static ERRNO2FILE errno2file[ERRNO2FILE_MAX] =
   } ;
 
 static OFC_DWORD 
-OfcFSDarwinAIOThread (BLUE_HANDLE hThread, OFC_VOID *context) ;
+OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context) ;
 
 static OFC_UINT32 TranslateError (OFC_UINT32 file_errno)
 {
@@ -267,16 +267,16 @@ static OFC_LPSTR FilePath2DarwinPath (OFC_LPCTSTR lpFileName)
   return (lpAsciiName) ;
 }
 
-static BLUE_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
-					  OFC_DWORD dwDesiredAccess,
-					  OFC_DWORD dwShareMode,
-					  OFC_LPSECURITY_ATTRIBUTES 
+static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
+                                         OFC_DWORD dwDesiredAccess,
+                                         OFC_DWORD dwShareMode,
+                                         OFC_LPSECURITY_ATTRIBUTES
 					  lpSecAttributes,
-					  OFC_DWORD dwCreationDisposition,
-					  OFC_DWORD dwFlagsAndAttributes,
-					  BLUE_HANDLE hTemplateFile)
+                                         OFC_DWORD dwCreationDisposition,
+                                         OFC_DWORD dwFlagsAndAttributes,
+                                         OFC_HANDLE hTemplateFile)
 {
-  BLUE_HANDLE ret ;
+  OFC_HANDLE ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
   int oflag ;
   mode_t mode ;
@@ -310,14 +310,14 @@ static BLUE_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
 				 (OFC_DWORD_PTR) TranslateError(errno)) ;
 	  BlueHeapFree (context->name) ;
 	  BlueHeapFree (context) ;
-	  ret = BLUE_INVALID_HANDLE_VALUE ;
+	  ret = OFC_INVALID_HANDLE_VALUE ;
 	}
       else
-	ret = BlueHandleCreate (BLUE_HANDLE_FSDARWIN_FILE, context) ;
+	ret = ofc_handle_create (OFC_HANDLE_FSDARWIN_FILE, context) ;
     }
   else
     {
-      ret = BlueHandleCreate (BLUE_HANDLE_FSDARWIN_FILE, context) ;
+      ret = ofc_handle_create (OFC_HANDLE_FSDARWIN_FILE, context) ;
       context->backup = OFC_TRUE ;
     }
 
@@ -353,11 +353,11 @@ OfcFSDarwinCreateDirectory (OFC_LPCTSTR lpPathName,
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinWriteFile (BLUE_HANDLE hFile,
-				       OFC_LPCVOID lpBuffer,
-				       OFC_DWORD nNumberOfBytesToWrite,
-				       OFC_LPDWORD lpNumberOfBytesWritten,
-				       BLUE_HANDLE hOverlapped)
+static OFC_BOOL OfcFSDarwinWriteFile (OFC_HANDLE hFile,
+                                      OFC_LPCVOID lpBuffer,
+                                      OFC_DWORD nNumberOfBytesToWrite,
+                                      OFC_LPDWORD lpNumberOfBytesWritten,
+                                      OFC_HANDLE hOverlapped)
 {
   OFC_BOOL ret ;
   ssize_t status ;
@@ -365,7 +365,7 @@ static OFC_BOOL OfcFSDarwinWriteFile (BLUE_HANDLE hFile,
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -375,9 +375,9 @@ static OFC_BOOL OfcFSDarwinWriteFile (BLUE_HANDLE hFile,
   else
     {
       Overlapped = OFC_NULL ;
-      if (hOverlapped != BLUE_HANDLE_NULL)
+      if (hOverlapped != OFC_HANDLE_NULL)
 	{
-	  Overlapped = BlueHandleLock (hOverlapped) ;
+	  Overlapped = ofc_handle_lock (hOverlapped) ;
 	}
 
       if (Overlapped != OFC_NULL)
@@ -396,7 +396,7 @@ static OFC_BOOL OfcFSDarwinWriteFile (BLUE_HANDLE hFile,
 	  BlueThreadSetVariable (OfcLastError, (OFC_DWORD_PTR) 
 				 TranslateError(EINPROGRESS)) ;
 
-	  BlueHandleUnlock (hOverlapped) ;
+	  ofc_handle_unlock (hOverlapped) ;
 	  ret = OFC_FALSE ;
 	}
       else
@@ -419,16 +419,16 @@ static OFC_BOOL OfcFSDarwinWriteFile (BLUE_HANDLE hFile,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinReadFile (BLUE_HANDLE hFile,
-				      OFC_LPVOID lpBuffer,
-				      OFC_DWORD nNumberOfBytesToRead,
-				      OFC_LPDWORD lpNumberOfBytesRead,
-				      BLUE_HANDLE hOverlapped)
+static OFC_BOOL OfcFSDarwinReadFile (OFC_HANDLE hFile,
+                                     OFC_LPVOID lpBuffer,
+                                     OFC_DWORD nNumberOfBytesToRead,
+                                     OFC_LPDWORD lpNumberOfBytesRead,
+                                     OFC_HANDLE hOverlapped)
 {
   OFC_BOOL ret ;
   ssize_t status ;
@@ -436,7 +436,7 @@ static OFC_BOOL OfcFSDarwinReadFile (BLUE_HANDLE hFile,
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -446,8 +446,8 @@ static OFC_BOOL OfcFSDarwinReadFile (BLUE_HANDLE hFile,
   else
     {
       Overlapped = OFC_NULL ;
-      if (hOverlapped != BLUE_HANDLE_NULL)
-	Overlapped = BlueHandleLock (hOverlapped) ;
+      if (hOverlapped != OFC_HANDLE_NULL)
+	Overlapped = ofc_handle_lock (hOverlapped) ;
 
       if (Overlapped != OFC_NULL)
 	{
@@ -468,7 +468,7 @@ static OFC_BOOL OfcFSDarwinReadFile (BLUE_HANDLE hFile,
 	  BlueThreadSetVariable (OfcLastError, 
 				 (OFC_DWORD_PTR) TranslateError(EINPROGRESS)) ;
 
-	  BlueHandleUnlock (hOverlapped) ;
+	  ofc_handle_unlock (hOverlapped) ;
 	  ret = OFC_FALSE ;
 	}
       else
@@ -495,19 +495,19 @@ static OFC_BOOL OfcFSDarwinReadFile (BLUE_HANDLE hFile,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinCloseHandle (BLUE_HANDLE hFile)
+static OFC_BOOL OfcFSDarwinCloseHandle (OFC_HANDLE hFile)
 {
   OFC_BOOL ret ;
   int status ;
   BLUE_FS_DARWIN_CONTEXT *context ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL)
     {
@@ -532,7 +532,7 @@ static OFC_BOOL OfcFSDarwinCloseHandle (BLUE_HANDLE hFile)
 	      unlink (context->name) ;
 	    }
 
-	  BlueHandleDestroy (hFile) ;
+	  ofc_handle_destroy (hFile) ;
 	  BlueHeapFree (context->name) ;
 	  BlueHeapFree (context) ;
 	  ret = OFC_TRUE ;
@@ -543,7 +543,7 @@ static OFC_BOOL OfcFSDarwinCloseHandle (BLUE_HANDLE hFile)
 	  BlueThreadSetVariable (OfcLastError, 
 				 (OFC_DWORD_PTR) TranslateError(errno)) ;
 	}
-      BlueHandleUnlock (hFile) ;
+      ofc_handle_unlock (hFile) ;
     }
 
   return (ret) ;
@@ -1132,12 +1132,12 @@ GetWin32FileIdBothDirInfo (int fd,
   return (ret) ;
 }
 
-static BLUE_HANDLE 
+static OFC_HANDLE
 OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 			  OFC_LPWIN32_FIND_DATAW lpFindFileData,
 			  OFC_BOOL *more) 
 {
-  BLUE_HANDLE hRet ;
+  OFC_HANDLE hRet ;
   BLUE_FS_DARWIN_CONTEXT *context ;
   OFC_CHAR *asciiName ;
   OFC_TCHAR *tcharName ;
@@ -1150,7 +1150,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 
   context = BlueHeapMalloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
 
-  hRet = BLUE_INVALID_HANDLE_VALUE ;
+  hRet = OFC_INVALID_HANDLE_VALUE ;
   if (context != OFC_NULL)
     {
       context->pattern = OFC_NULL ;
@@ -1163,7 +1163,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 	  BluePathFreeFilename (path) ;
 	}
 
-      BluePathSetType (path, BLUE_FS_DARWIN) ;
+      BluePathSetType (path, OFC_FST_DARWIN) ;
       len = 0 ;
       len = BluePathPrintW (path, NULL, &len) + 1 ;
       tcharName = BlueHeapMalloc (len * sizeof (OFC_TCHAR)) ;
@@ -1234,16 +1234,16 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 	  BlueHeapFree (context) ;
 	}
       else
-	hRet = BlueHandleCreate (BLUE_HANDLE_FSWIN32_FILE, context) ;
+	hRet = ofc_handle_create (OFC_HANDLE_FSWIN32_FILE, context) ;
     }
 
   return (hRet) ;
 }
 
 static OFC_BOOL 
-OfcFSDarwinFindNextFile (BLUE_HANDLE hFindFile,
-			  OFC_LPWIN32_FIND_DATAW lpFindFileData,
-			  OFC_BOOL *more) 
+OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
+                         OFC_LPWIN32_FIND_DATAW lpFindFileData,
+                         OFC_BOOL *more)
 {
   struct dirent *dirent ;
   BLUE_FS_DARWIN_CONTEXT *context ;
@@ -1253,7 +1253,7 @@ OfcFSDarwinFindNextFile (BLUE_HANDLE hFindFile,
 
   ret = OFC_FALSE ;
   *more = OFC_FALSE ;
-  context = BlueHandleLock (hFindFile) ;
+  context = ofc_handle_lock (hFindFile) ;
 
   if (context == OFC_NULL)
     {
@@ -1303,20 +1303,20 @@ OfcFSDarwinFindNextFile (BLUE_HANDLE hFindFile,
 	BlueThreadSetVariable (OfcLastError, 
 			       (OFC_DWORD_PTR) TranslateError(errno)) ;
 
-      BlueHandleUnlock (hFindFile) ;
+      ofc_handle_unlock (hFindFile) ;
     }
 
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinFindClose (BLUE_HANDLE hFindFile) 
+static OFC_BOOL OfcFSDarwinFindClose (OFC_HANDLE hFindFile)
 {
   OFC_BOOL ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
   int status ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFindFile) ;
+  context = ofc_handle_lock (hFindFile) ;
 
   if (context == OFC_NULL)
     {
@@ -1329,7 +1329,7 @@ static OFC_BOOL OfcFSDarwinFindClose (BLUE_HANDLE hFindFile)
       if (status == 0)
 	{
 	  ret = OFC_TRUE ;
-	  BlueHandleDestroy (hFindFile) ;
+	  ofc_handle_destroy (hFindFile) ;
 	  BlueHeapFree (context->name) ;
 	  if (context->pattern != OFC_NULL)
 	    BlueHeapFree (context->pattern) ;
@@ -1339,13 +1339,13 @@ static OFC_BOOL OfcFSDarwinFindClose (BLUE_HANDLE hFindFile)
 	BlueThreadSetVariable (OfcLastError, 
 			       (OFC_DWORD_PTR) TranslateError(errno)) ;
 
-      BlueHandleUnlock (hFindFile) ;
+      ofc_handle_unlock (hFindFile) ;
     }
 
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinFlushFileBuffers (BLUE_HANDLE hFile) 
+static OFC_BOOL OfcFSDarwinFlushFileBuffers (OFC_HANDLE hFile)
 {
   /*
    * No flush needed
@@ -1376,7 +1376,7 @@ OfcFSDarwinGetFileAttributesEx (OFC_LPCTSTR lpFileName,
 
 static OFC_BOOL 
 OfcFSDarwinGetFileInformationByHandleEx 
-(BLUE_HANDLE hFile,
+(OFC_HANDLE hFile,
  OFC_FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
  OFC_LPVOID lpFileInformation,
  OFC_DWORD dwBufferSize) 
@@ -1386,7 +1386,7 @@ OfcFSDarwinGetFileInformationByHandleEx
 
   ret = OFC_FALSE ;
 
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
   if (context == OFC_NULL)
     {
       BlueThreadSetVariable (OfcLastError, 
@@ -1536,7 +1536,7 @@ OfcFSDarwinGetFileInformationByHandleEx
 	    }
 	  break ;
 	}
-      BlueHandleUnlock (hFile) ;
+      ofc_handle_unlock (hFile) ;
     }
 
   return (ret) ;
@@ -1569,91 +1569,91 @@ static OFC_BOOL OfcFSDarwinMoveFile (OFC_LPCTSTR lpExistingFileName,
   return (ret) ;
 }
 
-BLUE_HANDLE OfcFSDarwinGetOverlappedEvent (BLUE_HANDLE hOverlapped)
+OFC_HANDLE OfcFSDarwinGetOverlappedEvent (OFC_HANDLE hOverlapped)
 {
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
-  BLUE_HANDLE hRet ;
+  OFC_HANDLE hRet ;
 
-  hRet = BLUE_HANDLE_NULL ;
-  Overlapped = BlueHandleLock (hOverlapped) ;
+  hRet = OFC_HANDLE_NULL ;
+  Overlapped = ofc_handle_lock (hOverlapped) ;
   if (Overlapped != OFC_NULL)
     {
       hRet = Overlapped->hEvent ;
-      BlueHandleUnlock (hOverlapped) ;
+      ofc_handle_unlock (hOverlapped) ;
     }
   return (hRet) ;
 }
 
-static BLUE_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
+static OFC_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
 {
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
-  BLUE_HANDLE hRet ;
+  OFC_HANDLE hRet ;
 
-  hRet = BLUE_HANDLE_NULL ;
+  hRet = OFC_HANDLE_NULL ;
 
-  hRet = (BLUE_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
-  if (hRet == BLUE_HANDLE_NULL)
+  hRet = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
+  if (hRet == OFC_HANDLE_NULL)
     {
       Overlapped = BlueHeapMalloc (sizeof (BLUE_FSDARWIN_OVERLAPPED)) ;
       if (Overlapped != OFC_NULL)
 	{
-	  hRet = BlueHandleCreate (BLUE_HANDLE_FSDARWIN_OVERLAPPED, 
-				   Overlapped) ;
+	  hRet = ofc_handle_create (OFC_HANDLE_FSDARWIN_OVERLAPPED,
+                                Overlapped) ;
 	  Overlapped->offset = 0 ;
 	  Overlapped->hEvent = ofc_event_create (OFC_EVENT_MANUAL) ;
 	  Overlapped->hBusy = ofc_event_create (OFC_EVENT_AUTO) ;
 
 	  Overlapped->hThread = BlueThreadCreate (&OfcFSDarwinAIOThread,
-						  BLUE_THREAD_AIO,
-						  g_instance++,
-						  Overlapped,
-						  BLUE_THREAD_JOIN,
-						  BLUE_HANDLE_NULL) ;
+                                              BLUE_THREAD_AIO,
+                                              g_instance++,
+                                              Overlapped,
+                                              BLUE_THREAD_JOIN,
+                                              OFC_HANDLE_NULL) ;
 	}
     }
 
-  if (hRet != BLUE_HANDLE_NULL)
+  if (hRet != OFC_HANDLE_NULL)
     {
-      Overlapped = BlueHandleLock (hRet) ;
+      Overlapped = ofc_handle_lock (hRet) ;
       if (Overlapped != OFC_NULL)
 	{
 	  Overlapped->Errno = 0 ;
-	  BlueHandleUnlock (hRet) ;
+	  ofc_handle_unlock (hRet) ;
 	}
     }
   return (hRet) ;
 }
 
-OFC_VOID OfcFSDarwinDestroyOverlapped (BLUE_HANDLE hOverlapped)
+OFC_VOID OfcFSDarwinDestroyOverlapped (OFC_HANDLE hOverlapped)
 {
   BlueQenqueue (OfcFSDarwinAIOFreeQ, (OFC_VOID *) hOverlapped) ;
 }
 
-OFC_VOID OfcFSDarwinSetOverlappedOffset (BLUE_HANDLE hOverlapped,
-					   OFC_OFFT offset)
+OFC_VOID OfcFSDarwinSetOverlappedOffset (OFC_HANDLE hOverlapped,
+                                         OFC_OFFT offset)
 {
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
 
-  Overlapped = BlueHandleLock (hOverlapped) ;
+  Overlapped = ofc_handle_lock (hOverlapped) ;
   if (Overlapped != OFC_NULL)
     {
       Overlapped->offset = offset ;
-      BlueHandleUnlock (hOverlapped) ;
+      ofc_handle_unlock (hOverlapped) ;
     }
 }
 
 static OFC_BOOL 
-OfcFSDarwinGetOverlappedResult (BLUE_HANDLE hFile,
-				BLUE_HANDLE hOverlapped,
-				OFC_LPDWORD lpNumberOfBytesTransferred,
-				OFC_BOOL bWait) 
+OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
+                                OFC_HANDLE hOverlapped,
+                                OFC_LPDWORD lpNumberOfBytesTransferred,
+                                OFC_BOOL bWait)
 {
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
   BLUE_FS_DARWIN_CONTEXT *context ;
   OFC_BOOL ret ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -1662,7 +1662,7 @@ OfcFSDarwinGetOverlappedResult (BLUE_HANDLE hFile,
     }
   else
     {
-      Overlapped = BlueHandleLock (hOverlapped) ;
+      Overlapped = ofc_handle_lock (hOverlapped) ;
       if (Overlapped != OFC_NULL)
 	{
 	  if (bWait)
@@ -1688,17 +1688,17 @@ OfcFSDarwinGetOverlappedResult (BLUE_HANDLE hFile,
 				     (OFC_DWORD_PTR) 
 				     TranslateError(EINPROGRESS)) ;
 	    }
-	  BlueHandleUnlock (hOverlapped) ;
+	  ofc_handle_unlock (hOverlapped) ;
 	}
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
 
-static OFC_BOOL OfcFSDarwinSetEndOfFile (BLUE_HANDLE hFile) 
+static OFC_BOOL OfcFSDarwinSetEndOfFile (OFC_HANDLE hFile)
 {
   OFC_BOOL ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
@@ -1706,7 +1706,7 @@ static OFC_BOOL OfcFSDarwinSetEndOfFile (BLUE_HANDLE hFile)
   int status ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -1734,7 +1734,7 @@ static OFC_BOOL OfcFSDarwinSetEndOfFile (BLUE_HANDLE hFile)
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
@@ -1753,17 +1753,17 @@ static OFC_BOOL OfcFSDarwinSetFileAttributes (OFC_LPCTSTR lpFileName,
 }
 
 static OFC_BOOL 
-OfcFSDarwinSetFileInformationByHandle (BLUE_HANDLE hFile,
-				       OFC_FILE_INFO_BY_HANDLE_CLASS
+OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
+                                       OFC_FILE_INFO_BY_HANDLE_CLASS
 				       FileInformationClass,
-				       OFC_LPVOID lpFileInformation,
-				       OFC_DWORD dwBufferSize) 
+                                       OFC_LPVOID lpFileInformation,
+                                       OFC_DWORD dwBufferSize)
 {
   OFC_BOOL ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL)
     {
@@ -1899,15 +1899,15 @@ OfcFSDarwinSetFileInformationByHandle (BLUE_HANDLE hFile,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return ((OFC_BOOL) ret) ;
 }
 
-static OFC_DWORD OfcFSDarwinSetFilePointer (BLUE_HANDLE hFile,
-					     OFC_LONG lDistanceToMove,
-					     OFC_PLONG lpDistanceToMoveHigh,
-					     OFC_DWORD dwMoveMethod) 
+static OFC_DWORD OfcFSDarwinSetFilePointer (OFC_HANDLE hFile,
+                                            OFC_LONG lDistanceToMove,
+                                            OFC_PLONG lpDistanceToMoveHigh,
+                                            OFC_DWORD dwMoveMethod)
 {
   OFC_DWORD ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
@@ -1915,7 +1915,7 @@ static OFC_DWORD OfcFSDarwinSetFilePointer (BLUE_HANDLE hFile,
   int whence ;
 
   ret = OFC_INVALID_SET_FILE_POINTER ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -1953,19 +1953,19 @@ static OFC_DWORD OfcFSDarwinSetFilePointer (BLUE_HANDLE hFile,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
 
 static OFC_BOOL 
-OfcFSDarwinTransactNamedPipe (BLUE_HANDLE hFile,
-			      OFC_LPVOID lpInBuffer,
-			      OFC_DWORD nInBufferSize,
-			      OFC_LPVOID lpOutBuffer,
-			      OFC_DWORD nOutBufferSize,
-			      OFC_LPDWORD lpBytesRead,
-			      BLUE_HANDLE hOverlapped)
+OfcFSDarwinTransactNamedPipe (OFC_HANDLE hFile,
+                              OFC_LPVOID lpInBuffer,
+                              OFC_DWORD nInBufferSize,
+                              OFC_LPVOID lpOutBuffer,
+                              OFC_DWORD nOutBufferSize,
+                              OFC_LPDWORD lpBytesRead,
+                              OFC_HANDLE hOverlapped)
 {
   return (OFC_FALSE) ;
 }
@@ -2082,17 +2082,17 @@ OfcFSDarwinGetVolumeInformation (OFC_LPCTSTR lpRootPathName,
  * \returns
  * OFC_TRUE if successful, OFC_FALSE otherwise
  */
-static OFC_BOOL OfcFSDarwinUnlockFileEx (BLUE_HANDLE hFile, 
-					  OFC_UINT32 length_low, 
-					  OFC_UINT32 length_high,
-					  BLUE_HANDLE hOverlapped)
+static OFC_BOOL OfcFSDarwinUnlockFileEx (OFC_HANDLE hFile,
+                                         OFC_UINT32 length_low,
+                                         OFC_UINT32 length_high,
+                                         OFC_HANDLE hOverlapped)
 {
   OFC_BOOL ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
   int status ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -2110,7 +2110,7 @@ static OFC_BOOL OfcFSDarwinUnlockFileEx (BLUE_HANDLE hFile,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
   return (ret) ;
  }
 
@@ -2135,10 +2135,10 @@ static OFC_BOOL OfcFSDarwinUnlockFileEx (BLUE_HANDLE hFile,
  * \returns
  * OFC_TRUE if successful, OFC_FALSE otherwise
  */
-static OFC_BOOL OfcFSDarwinLockFileEx (BLUE_HANDLE hFile, OFC_DWORD flags,
-					OFC_DWORD length_low, 
-					OFC_DWORD length_high,
-					BLUE_HANDLE lpOverlapped)
+static OFC_BOOL OfcFSDarwinLockFileEx (OFC_HANDLE hFile, OFC_DWORD flags,
+                                       OFC_DWORD length_low,
+                                       OFC_DWORD length_high,
+                                       OFC_HANDLE lpOverlapped)
 {
   OFC_BOOL ret ;
   BLUE_FS_DARWIN_CONTEXT *context ;
@@ -2146,7 +2146,7 @@ static OFC_BOOL OfcFSDarwinLockFileEx (BLUE_HANDLE hFile, OFC_DWORD flags,
   int operation ;
 
   ret = OFC_FALSE ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context != OFC_NULL || context->backup)
     {
@@ -2171,7 +2171,7 @@ static OFC_BOOL OfcFSDarwinLockFileEx (BLUE_HANDLE hFile, OFC_DWORD flags,
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (ret) ;
 }
@@ -2184,7 +2184,7 @@ static OFC_BOOL OfcFSDarwinDismount (OFC_LPCTSTR filename)
   return (ret) ;
 }
 
-static BLUE_FILE_FSINFO OfcFSDarwinInfo =
+static OFC_FILE_FSINFO OfcFSDarwinInfo =
   {
     &OfcFSDarwinCreateFile,
     &OfcFSDarwinDeleteFile,
@@ -2218,7 +2218,7 @@ static BLUE_FILE_FSINFO OfcFSDarwinInfo =
   } ;
 
 static OFC_DWORD 
-OfcFSDarwinAIOThread (BLUE_HANDLE hThread, OFC_VOID *context)
+OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context)
 {
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
   
@@ -2257,7 +2257,7 @@ OfcFSDarwinAIOThread (BLUE_HANDLE hThread, OFC_VOID *context)
 
 OFC_VOID BlueFSDarwinStartup (OFC_VOID)
 {
-  BlueFSRegister (BLUE_FS_DARWIN, &OfcFSDarwinInfo) ;
+  ofc_fs_register (OFC_FST_DARWIN, &OfcFSDarwinInfo) ;
 
   OfcFSDarwinAIOFreeQ = BlueQcreate() ;
   g_instance = 0 ;
@@ -2265,14 +2265,14 @@ OFC_VOID BlueFSDarwinStartup (OFC_VOID)
 
 OFC_VOID BlueFSDarwinShutdown (OFC_VOID)
 {
-  BLUE_HANDLE hOverlapped ;
+  OFC_HANDLE hOverlapped ;
   BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
 
-  for (hOverlapped = (BLUE_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
-       hOverlapped != BLUE_HANDLE_NULL ;
-       hOverlapped = (BLUE_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ))
+  for (hOverlapped = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
+       hOverlapped != OFC_HANDLE_NULL ;
+       hOverlapped = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ))
     {
-      Overlapped = BlueHandleLock (hOverlapped) ;
+      Overlapped = ofc_handle_lock (hOverlapped) ;
       if (Overlapped != OFC_NULL)
 	{
 	  BlueThreadDelete (Overlapped->hThread);
@@ -2283,21 +2283,21 @@ OFC_VOID BlueFSDarwinShutdown (OFC_VOID)
 	  ofc_event_destroy(Overlapped->hEvent);
 	  ofc_event_destroy(Overlapped->hBusy);
 	  BlueHeapFree(Overlapped);
-	  BlueHandleDestroy(hOverlapped);
-	  BlueHandleUnlock(hOverlapped);
+	  ofc_handle_destroy(hOverlapped);
+	  ofc_handle_unlock(hOverlapped);
 	}
     }
   BlueQdestroy(OfcFSDarwinAIOFreeQ);
-  OfcFSDarwinAIOFreeQ = BLUE_HANDLE_NULL;
+  OfcFSDarwinAIOFreeQ = OFC_HANDLE_NULL;
 }
 
-int OfcFSDarwinGetFD (BLUE_HANDLE hFile) 
+int OfcFSDarwinGetFD (OFC_HANDLE hFile)
 {
   int fd ;
   BLUE_FS_DARWIN_CONTEXT *context ;
 
   fd = -1 ;
-  context = BlueHandleLock (hFile) ;
+  context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
@@ -2310,7 +2310,7 @@ int OfcFSDarwinGetFD (BLUE_HANDLE hFile)
     }
 
   if (context != OFC_NULL)
-    BlueHandleUnlock (hFile) ;
+    ofc_handle_unlock (hFile) ;
 
   return (fd) ;
 }
