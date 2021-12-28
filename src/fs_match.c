@@ -8,10 +8,10 @@
 #include "ofc/libc.h"
 #include "ofc/fs_match.h"
 
-static BLUE_CHAR 
-BlueFileMatchLower (BLUE_INT flags, BLUE_CHAR c)
+static OFC_CHAR 
+BlueFileMatchLower (OFC_INT flags, OFC_CHAR c)
 {
-  if (flags & BLUE_FILE_MATCH_CASEFOLD)
+  if (flags & OFC_FILE_MATCH_CASEFOLD)
     {
       c = BLUE_C_TOLOWER(c) ;
     }
@@ -19,15 +19,15 @@ BlueFileMatchLower (BLUE_INT flags, BLUE_CHAR c)
 }
 
 
-BLUE_CORE_LIB BLUE_BOOL 
-BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
+OFC_CORE_LIB OFC_BOOL 
+BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 {
-  BLUE_BOOL ret ;
+  OFC_BOOL ret ;
 
-  ret = BLUE_TRUE ;
-  if (pattern != BLUE_NULL)
+  ret = OFC_TRUE ;
+  if (pattern != OFC_NULL)
     {
-      for ( ; *pattern != '\0' && ret == BLUE_TRUE ; )
+      for ( ; *pattern != '\0' && ret == OFC_TRUE ; )
 	{
 	  /*
 	   * Dispatch on the pattern character
@@ -43,11 +43,11 @@ BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
 		/*
 		 * Trying to match end of string.  That's a failure
 		 */
-		ret = BLUE_FALSE ;
+		ret = OFC_FALSE ;
 	      else
 		{
 		  if (*name == '.')
-		    ret = BLUE_FALSE ;
+		    ret = OFC_FALSE ;
 		  else
 		    /*
 		     * Matched the character, on to the next
@@ -64,7 +64,7 @@ BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
 
 	      if (BlueFileMatchLower (flags, *pattern)  != 
 		  BlueFileMatchLower (flags, *name))
-		ret = BLUE_FALSE ;
+		ret = OFC_FALSE ;
 	      else
 		{
 		  /*
@@ -91,11 +91,11 @@ BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
 		   * We need to recursively try to match strings
 		   */
 		  for ( ; *name != '\0' && 
-			  BlueFileMatch (pattern, name, flags) == BLUE_FALSE ; 
+			  BlueFileMatch (pattern, name, flags) == OFC_FALSE ; 
 			name++) ;
 
 		  if (*name == '\0')
-		    ret = BLUE_FALSE ;
+		    ret = OFC_FALSE ;
 		  else
 		    pattern += BlueCstrlen (pattern) ;
 		}
@@ -104,7 +104,7 @@ BlueFileMatch (BLUE_CHAR *pattern, BLUE_CHAR *name, BLUE_INT flags)
 	    default:
 	      if (BlueFileMatchLower (flags, *pattern) != 
 		  BlueFileMatchLower (flags, *name))
-		ret = BLUE_FALSE ;
+		ret = OFC_FALSE ;
 	      else
 		{
 		  pattern++ ;
