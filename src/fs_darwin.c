@@ -260,9 +260,9 @@ static OFC_LPSTR FilePath2DarwinPath (OFC_LPCTSTR lpFileName)
   OFC_LPSTR lpAsciiName ;
 
   p = lpFileName ;
-  if (BlueCtstrncmp (lpFileName, TSTR("file:"), 5) == 0)
+  if (ofc_tstrncmp (lpFileName, TSTR("file:"), 5) == 0)
     p = lpFileName + 5 ;
-  lpAsciiName = BlueCtstr2cstr (p) ;
+  lpAsciiName = ofc_tstr2cstr (p) ;
 
   return (lpAsciiName) ;
 }
@@ -282,7 +282,7 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
   mode_t mode ;
   OFC_CHAR *lpAsciiName ;
 
-  context = BlueHeapMalloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
+  context = ofc_malloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
   context->fd = -1 ;
   context->deleteOnClose = OFC_FALSE ;
   context->backup = OFC_FALSE ;
@@ -299,7 +299,7 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
    */
   lpAsciiName = FilePath2DarwinPath (lpFileName) ;
 
-  context->name = BlueCstrdup (lpAsciiName) ;
+  context->name = ofc_strdup (lpAsciiName) ;
 
   if (!(dwFlagsAndAttributes & OFC_FILE_FLAG_BACKUP_SEMANTICS))
     {
@@ -308,8 +308,8 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
 	{
 	  BlueThreadSetVariable (OfcLastError, 
 				 (OFC_DWORD_PTR) TranslateError(errno)) ;
-	  BlueHeapFree (context->name) ;
-	  BlueHeapFree (context) ;
+	  ofc_free (context->name) ;
+	  ofc_free (context) ;
 	  ret = OFC_INVALID_HANDLE_VALUE ;
 	}
       else
@@ -321,7 +321,7 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
       context->backup = OFC_TRUE ;
     }
 
-  BlueHeapFree (lpAsciiName) ;
+  ofc_free (lpAsciiName) ;
 
   return (ret) ;
 }
@@ -340,7 +340,7 @@ OfcFSDarwinCreateDirectory (OFC_LPCTSTR lpPathName,
 
   status = mkdir (lpAsciiName, mode) ;
 
-  BlueHeapFree (lpAsciiName) ;
+  ofc_free (lpAsciiName) ;
   if (status < 0)
     {
       BlueThreadSetVariable (OfcLastError, 
@@ -388,7 +388,7 @@ static OFC_BOOL OfcFSDarwinWriteFile (OFC_HANDLE hFile,
 	  Overlapped->nNumberOfBytes = nNumberOfBytesToWrite ;
 	  Overlapped->opcode = BLUE_FSDARWIN_WRITE ;
 
-	  BlueCTrace ("aio_write 0x%08x\n", 
+	  ofc_trace ("aio_write 0x%08x\n", 
 		      (OFC_INT) Overlapped->offset) ;
 
 	  ofc_event_set (Overlapped->hBusy) ;
@@ -460,7 +460,7 @@ static OFC_BOOL OfcFSDarwinReadFile (OFC_HANDLE hFile,
 	  Overlapped->nNumberOfBytes = nNumberOfBytesToRead ;
 	  Overlapped->opcode = BLUE_FSDARWIN_READ ;
 
-	  BlueCTrace ("aio_read 0x%08x\n", 
+	  ofc_trace ("aio_read 0x%08x\n", 
 		      (OFC_INT) Overlapped->offset) ;
 
 	  ofc_event_set (Overlapped->hBusy) ;
@@ -533,8 +533,8 @@ static OFC_BOOL OfcFSDarwinCloseHandle (OFC_HANDLE hFile)
 	    }
 
 	  ofc_handle_destroy (hFile) ;
-	  BlueHeapFree (context->name) ;
-	  BlueHeapFree (context) ;
+	  ofc_free (context->name) ;
+	  ofc_free (context) ;
 	  ret = OFC_TRUE ;
 	}
       else
@@ -561,7 +561,7 @@ static OFC_BOOL OfcFSDarwinDeleteFile (OFC_LPCTSTR lpFileName)
   asciiName = FilePath2DarwinPath (lpFileName) ;
 
   status = unlink (asciiName) ;
-  BlueHeapFree (asciiName) ;
+  ofc_free (asciiName) ;
 
   if (status < 0)
     {
@@ -583,7 +583,7 @@ static OFC_BOOL OfcFSDarwinRemoveDirectory (OFC_LPCTSTR lpPathName)
   asciiName = FilePath2DarwinPath (lpPathName) ;
   status = rmdir (asciiName) ;
 
-  BlueHeapFree (asciiName) ;
+  ofc_free (asciiName) ;
   if (status < 0)
     {
       ret = OFC_FALSE ;
@@ -649,9 +649,9 @@ static OFC_BOOL GetWin32FindFileData (OFC_CHAR *asciiName,
       lpFindFileData->nFileSizeHigh = sb.st_size >> 32 ;
       lpFindFileData->nFileSizeLow = sb.st_size & 0xFFFFFFFF ;
 
-      tcharName = BlueCcstr2tstr (dName) ;
-      BlueCtstrncpy (lpFindFileData->cFileName, tcharName, OFC_MAX_PATH) ;
-      BlueHeapFree (tcharName) ;
+      tcharName = ofc_cstr2tstr (dName) ;
+      ofc_tstrncpy (lpFindFileData->cFileName, tcharName, OFC_MAX_PATH) ;
+      ofc_free (tcharName) ;
 
       lpFindFileData->cAlternateFileName[0] = TCHAR_EOS ;
       ret = OFC_TRUE ;
@@ -1001,13 +1001,13 @@ static OFC_BOOL GetWin32FileNameInfo (int fd,
 {
   OFC_TCHAR *tcharName ;
 
-  tcharName = BlueCcstr2tstr (name) ;
-  lpFileInformation->FileNameLength = (OFC_DWORD) BlueCtstrlen (tcharName) *
-    sizeof (OFC_TCHAR) ;
-  BlueCmemcpy (lpFileInformation->FileName, tcharName,
-	       BLUE_C_MIN (dwBufferSize - sizeof (OFC_DWORD),
+  tcharName = ofc_cstr2tstr (name) ;
+  lpFileInformation->FileNameLength = (OFC_DWORD) ofc_tstrlen (tcharName) *
+                                      sizeof (OFC_TCHAR) ;
+  ofc_memcpy (lpFileInformation->FileName, tcharName,
+              OFC_MIN (dwBufferSize - sizeof (OFC_DWORD),
 			   lpFileInformation->FileNameLength)) ;
-  BlueHeapFree (tcharName) ;
+  ofc_free (tcharName) ;
   return (OFC_TRUE) ;
 }
 
@@ -1108,19 +1108,19 @@ GetWin32FileIdBothDirInfo (int fd,
       if (lpFileInfo->FileAttributes == 0)
 	lpFileInfo->FileAttributes |= OFC_FILE_ATTRIBUTE_NORMAL ;
 
-      tcharName = BlueCcstr2tstr (name) ;
-      lpFileInfo->FileNameLength = (OFC_DWORD) BlueCtstrlen (tcharName) *
-	sizeof (OFC_TCHAR) ;
+      tcharName = ofc_cstr2tstr (name) ;
+      lpFileInfo->FileNameLength = (OFC_DWORD) ofc_tstrlen (tcharName) *
+                                   sizeof (OFC_TCHAR) ;
       lpFileInfo->EaSize = 0 ;
       lpFileInfo->ShortNameLength = 0 ;
       lpFileInfo->ShortName[0] = TCHAR_EOS ;
       lpFileInfo->FileId = 0 ;
-      BlueCmemcpy (lpFileInfo->FileName, tcharName,
-		   BLUE_C_MIN (dwBufferSize - 
+      ofc_memcpy (lpFileInfo->FileName, tcharName,
+                  OFC_MIN (dwBufferSize -
 			       sizeof (OFC_FILE_ID_BOTH_DIR_INFO) - 
 			       sizeof (OFC_TCHAR),
 			       lpFileInfo->FileNameLength)) ;
-      BlueHeapFree (tcharName) ;
+      ofc_free (tcharName) ;
       ret = OFC_TRUE ;
     }
   else
@@ -1144,38 +1144,38 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
   struct dirent *dirent ;
   OFC_CHAR *pathname ;
   OFC_SIZET len ;
-  BLUE_PATH *path ;
+  OFC_PATH *path ;
   OFC_LPTSTR cursor ;
   OFC_LPCTSTR filename ;
 
-  context = BlueHeapMalloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
+  context = ofc_malloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
 
   hRet = OFC_INVALID_HANDLE_VALUE ;
   if (context != OFC_NULL)
     {
       context->pattern = OFC_NULL ;
 
-      path = BluePathCreateW (lpFileName) ;
-      filename = BluePathFilename (path) ;
+      path = ofc_path_createW (lpFileName) ;
+      filename = ofc_path_filename (path) ;
       if (filename != OFC_NULL)
 	{
-	  context->pattern = BlueCtstr2cstr(filename) ;
-	  BluePathFreeFilename (path) ;
+	  context->pattern = ofc_tstr2cstr(filename) ;
+	  ofc_path_free_filename (path) ;
 	}
 
-      BluePathSetType (path, OFC_FST_DARWIN) ;
+      ofc_path_set_type (path, OFC_FST_DARWIN) ;
       len = 0 ;
-      len = BluePathPrintW (path, NULL, &len) + 1 ;
-      tcharName = BlueHeapMalloc (len * sizeof (OFC_TCHAR)) ;
+      len = ofc_path_printW (path, NULL, &len) + 1 ;
+      tcharName = ofc_malloc (len * sizeof (OFC_TCHAR)) ;
       cursor = tcharName ;
-      BluePathPrintW (path, &cursor, &len) ;
-      BluePathDelete (path) ;
+      ofc_path_printW (path, &cursor, &len) ;
+      ofc_path_delete (path) ;
 
       asciiName = FilePath2DarwinPath (tcharName) ;
-      BlueHeapFree (tcharName) ;
-      context->name = BlueCstrdup (asciiName) ;
+      ofc_free (tcharName) ;
+      context->name = ofc_strdup (asciiName) ;
       context->dir = opendir (asciiName) ;
-      BlueHeapFree (asciiName) ;
+      ofc_free (asciiName) ;
       if (context->dir != NULL)
 	{
 	  for (dirent = readdir (context->dir) ;
@@ -1195,12 +1195,12 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 	      /*
 	       * Let's return the info
 	       */
-	      len = BlueCstrlen(context->name) + BlueCstrlen (dirent->d_name) ;
-	      pathname = BlueHeapMalloc (len+2) ;
-	      BlueCsnprintf (pathname, len+2, "%s/%s", 
-			     context->name, dirent->d_name) ;
+	      len = ofc_strlen(context->name) + ofc_strlen (dirent->d_name) ;
+	      pathname = ofc_malloc (len + 2) ;
+	      ofc_snprintf (pathname, len + 2, "%s/%s",
+                        context->name, dirent->d_name) ;
 	      GetWin32FindFileData (pathname, dirent->d_name, lpFindFileData) ;
-	      BlueHeapFree (pathname) ;
+	      ofc_free (pathname) ;
 
 	      *more = OFC_FALSE ;
 
@@ -1228,10 +1228,10 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 	{
 	  BlueThreadSetVariable (OfcLastError, 
 				 (OFC_DWORD_PTR) TranslateError(errno)) ;
-	  BlueHeapFree (context->name) ;
+	  ofc_free (context->name) ;
 	  if (context->pattern != NULL)
-	    BlueHeapFree (context->pattern) ;
-	  BlueHeapFree (context) ;
+	    ofc_free (context->pattern) ;
+	  ofc_free (context) ;
 	}
       else
 	hRet = ofc_handle_create (OFC_HANDLE_FSWIN32_FILE, context) ;
@@ -1265,15 +1265,15 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
       if (context->nextRet == 0)
 	{
 	  ret = OFC_TRUE ;
-	  len = BlueCstrlen(context->name) + 
-	    BlueCstrlen (context->nextDirent.d_name) ;
-	  pathname = BlueHeapMalloc (len+2) ;
-	  BlueCsnprintf (pathname, len+2, "%s/%s", 
-			 context->name, 
-			 context->nextDirent.d_name) ;
+	  len = ofc_strlen(context->name) +
+            ofc_strlen (context->nextDirent.d_name) ;
+	  pathname = ofc_malloc (len + 2) ;
+	  ofc_snprintf (pathname, len + 2, "%s/%s",
+                    context->name,
+                    context->nextDirent.d_name) ;
 	  ret = GetWin32FindFileData (pathname, context->nextDirent.d_name,
 				      lpFindFileData) ;
-	  BlueHeapFree (pathname) ;
+	  ofc_free (pathname) ;
 
 	  if (ret == OFC_TRUE)
 	    {
@@ -1330,10 +1330,10 @@ static OFC_BOOL OfcFSDarwinFindClose (OFC_HANDLE hFindFile)
 	{
 	  ret = OFC_TRUE ;
 	  ofc_handle_destroy (hFindFile) ;
-	  BlueHeapFree (context->name) ;
+	  ofc_free (context->name) ;
 	  if (context->pattern != OFC_NULL)
-	    BlueHeapFree (context->pattern) ;
-	  BlueHeapFree (context) ;
+	    ofc_free (context->pattern) ;
+	  ofc_free (context) ;
 	}
       else
 	BlueThreadSetVariable (OfcLastError, 
@@ -1369,7 +1369,7 @@ OfcFSDarwinGetFileAttributesEx (OFC_LPCTSTR lpFileName,
     {
       asciiName = FilePath2DarwinPath (lpFileName) ;
       ret = GetWin32FileAttributeData (asciiName, lpFileInformation) ;
-      BlueHeapFree (asciiName) ;
+      ofc_free (asciiName) ;
     }
   return (ret) ;
 }
@@ -1556,8 +1556,8 @@ static OFC_BOOL OfcFSDarwinMoveFile (OFC_LPCTSTR lpExistingFileName,
   asciiNew = FilePath2DarwinPath (lpNewFileName) ;
 
   status = rename (asciiExisting, asciiNew) ;
-  BlueHeapFree (asciiExisting);
-  BlueHeapFree (asciiNew) ;
+  ofc_free (asciiExisting);
+  ofc_free (asciiNew) ;
 
   if (status < 0)
     {
@@ -1594,7 +1594,7 @@ static OFC_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
   hRet = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
   if (hRet == OFC_HANDLE_NULL)
     {
-      Overlapped = BlueHeapMalloc (sizeof (BLUE_FSDARWIN_OVERLAPPED)) ;
+      Overlapped = ofc_malloc (sizeof (BLUE_FSDARWIN_OVERLAPPED)) ;
       if (Overlapped != OFC_NULL)
 	{
 	  hRet = ofc_handle_create (OFC_HANDLE_FSDARWIN_OVERLAPPED,
@@ -1814,15 +1814,15 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
 		rename_info = lpFileInformation ;
 
 		/* get the to name */
-		to_name = BlueHeapMalloc (rename_info->FileNameLength +
-					  sizeof (OFC_TCHAR)) ;
-		BlueCtstrncpy (to_name, rename_info->FileName,
-			       (rename_info->FileNameLength /
+		to_name = ofc_malloc (rename_info->FileNameLength +
+                              sizeof (OFC_TCHAR)) ;
+		ofc_tstrncpy (to_name, rename_info->FileName,
+                      (rename_info->FileNameLength /
 				sizeof(OFC_TCHAR))) ;
 		to_name[rename_info->FileNameLength / sizeof (OFC_TCHAR)] =
 		  TCHAR_EOS ;
 		
-		sztoname = BlueCtstr2cstr (to_name) ;
+		sztoname = ofc_tstr2cstr (to_name) ;
 		/* convert \\ to / */
 		for (p = sztoname ; *p != '\0' ; p++)
 		  if (*p == '\\')
@@ -1839,10 +1839,10 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
 		  }
 
 		status = rename (context->name, sztoname) ;
-		BlueHeapFree (context->name) ;
+		ofc_free (context->name) ;
 		context->name = sztoname ;
 
-		BlueHeapFree (to_name) ;
+		ofc_free (to_name) ;
 		
 		if (status == 0)
 		  ret = OFC_TRUE ;
@@ -1984,7 +1984,7 @@ OfcFSDarwinGetDiskFreeSpace (OFC_LPCTSTR lpRootPathName,
 
   asciiPath = FilePath2DarwinPath (lpRootPathName) ;
   status = statfs (asciiPath, &fsstat) ;
-  BlueHeapFree (asciiPath) ;
+  ofc_free (asciiPath) ;
 
   ret = OFC_FALSE ;
   if (status >= 0)
@@ -2020,7 +2020,7 @@ OfcFSDarwinGetVolumeInformation (OFC_LPCTSTR lpRootPathName,
 
   asciiPath = FilePath2DarwinPath (lpRootPathName) ;
   status = statfs (asciiPath, &fsstat) ;
-  BlueHeapFree (asciiPath) ;
+  ofc_free (asciiPath) ;
 
   ret = OFC_FALSE ;
   if (status >= 0)
@@ -2028,24 +2028,24 @@ OfcFSDarwinGetVolumeInformation (OFC_LPCTSTR lpRootPathName,
       ret = OFC_TRUE ;
       if (lpFileSystemName != OFC_NULL)
 	{
-	  asciiPath = BlueHeapMalloc (MFSNAMELEN+1) ;
-	  BlueCstrncpy (asciiPath, fsstat.f_fstypename, MFSNAMELEN) ;
+	  asciiPath = ofc_malloc (MFSNAMELEN + 1) ;
+	  ofc_strncpy (asciiPath, fsstat.f_fstypename, MFSNAMELEN) ;
 	  asciiPath[MFSNAMELEN] = TCHAR_EOS ;
-	  tcharPath = BlueCcstr2tstr (asciiPath) ;
-	  BlueCtstrncpy (lpFileSystemName, tcharPath, nFileSystemName) ;
-	  BlueHeapFree (tcharPath) ;
-	  BlueHeapFree (asciiPath) ;
+	  tcharPath = ofc_cstr2tstr (asciiPath) ;
+	  ofc_tstrncpy (lpFileSystemName, tcharPath, nFileSystemName) ;
+	  ofc_free (tcharPath) ;
+	  ofc_free (asciiPath) ;
 	}
 
       if (lpVolumeNameBuffer != OFC_NULL)
 	{
-	  asciiPath = BlueHeapMalloc (MNAMELEN+1) ;
-	  BlueCstrncpy (asciiPath, fsstat.f_mntfromname, MNAMELEN) ;
+	  asciiPath = ofc_malloc (MNAMELEN + 1) ;
+	  ofc_strncpy (asciiPath, fsstat.f_mntfromname, MNAMELEN) ;
 	  asciiPath[MNAMELEN] = TCHAR_EOS ;
-	  tcharPath = BlueCcstr2tstr (asciiPath) ;
-	  BlueCtstrncpy (lpVolumeNameBuffer, tcharPath, nVolumeNameSize) ;
-	  BlueHeapFree (tcharPath) ;
-	  BlueHeapFree (asciiPath) ;
+	  tcharPath = ofc_cstr2tstr (asciiPath) ;
+	  ofc_tstrncpy (lpVolumeNameBuffer, tcharPath, nVolumeNameSize) ;
+	  ofc_free (tcharPath) ;
+	  ofc_free (asciiPath) ;
 	}
 
       if (lpVolumeSerialNumber != OFC_NULL)
@@ -2282,7 +2282,7 @@ OFC_VOID BlueFSDarwinShutdown (OFC_VOID)
 	  
 	  ofc_event_destroy(Overlapped->hEvent);
 	  ofc_event_destroy(Overlapped->hBusy);
-	  BlueHeapFree(Overlapped);
+	  ofc_free(Overlapped);
 	  ofc_handle_destroy(hOverlapped);
 	  ofc_handle_unlock(hOverlapped);
 	}

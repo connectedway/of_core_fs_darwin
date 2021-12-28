@@ -13,7 +13,7 @@ BlueFileMatchLower (OFC_INT flags, OFC_CHAR c)
 {
   if (flags & OFC_FILE_MATCH_CASEFOLD)
     {
-      c = BLUE_C_TOLOWER(c) ;
+      c = OFC_TOLOWER(c) ;
     }
   return (c) ;
 }
@@ -97,7 +97,7 @@ BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 		  if (*name == '\0')
 		    ret = OFC_FALSE ;
 		  else
-		    pattern += BlueCstrlen (pattern) ;
+		    pattern += ofc_strlen (pattern) ;
 		}
 	      break ;
 
