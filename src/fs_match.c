@@ -9,7 +9,7 @@
 #include "ofc/fs_match.h"
 
 static OFC_CHAR 
-BlueFileMatchLower (OFC_INT flags, OFC_CHAR c)
+ofc_file_match_lower (OFC_INT flags, OFC_CHAR c)
 {
   if (flags & OFC_FILE_MATCH_CASEFOLD)
     {
@@ -20,7 +20,7 @@ BlueFileMatchLower (OFC_INT flags, OFC_CHAR c)
 
 
 OFC_CORE_LIB OFC_BOOL 
-BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
+ofc_file_match (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 {
   OFC_BOOL ret ;
 
@@ -62,8 +62,8 @@ BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 	       */
 	      pattern++ ;
 
-	      if (BlueFileMatchLower (flags, *pattern)  != 
-		  BlueFileMatchLower (flags, *name))
+	      if (ofc_file_match_lower (flags, *pattern)  != 
+		  ofc_file_match_lower (flags, *name))
 		ret = OFC_FALSE ;
 	      else
 		{
@@ -90,8 +90,8 @@ BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 		  /*
 		   * We need to recursively try to match strings
 		   */
-		  for ( ; *name != '\0' && 
-			  BlueFileMatch (pattern, name, flags) == OFC_FALSE ; 
+		  for ( ; *name != '\0' &&
+                  ofc_file_match (pattern, name, flags) == OFC_FALSE ;
 			name++) ;
 
 		  if (*name == '\0')
@@ -102,8 +102,8 @@ BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *name, OFC_INT flags)
 	      break ;
 
 	    default:
-	      if (BlueFileMatchLower (flags, *pattern) != 
-		  BlueFileMatchLower (flags, *name))
+	      if (ofc_file_match_lower (flags, *pattern) != 
+		  ofc_file_match_lower (flags, *name))
 		ret = OFC_FALSE ;
 	      else
 		{

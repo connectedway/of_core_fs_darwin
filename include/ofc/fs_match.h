@@ -18,7 +18,7 @@ extern "C"
 {
 #endif
   OFC_CORE_LIB OFC_BOOL 
-  BlueFileMatch (OFC_CHAR *pattern, OFC_CHAR *string, OFC_INT flags);
+  ofc_file_match (OFC_CHAR *pattern, OFC_CHAR *string, OFC_INT flags);
 #if defined(__cplusplus)
 }
 #endif

@@ -48,18 +48,18 @@ typedef struct
   struct dirent nextDirent ;
   int nextRet ;
   OFC_BOOL backup ;
-} BLUE_FS_DARWIN_CONTEXT ;
+} OFC_FS_DARWIN_CONTEXT ;
 
 typedef enum
   {
-    BLUE_FSDARWIN_READ,
-    BLUE_FSDARWIN_WRITE,
-    BLUE_FSDARWIN_NOOP
-  } BLUE_FSDARWIN_OP ;
+    OFC_FSDARWIN_READ,
+    OFC_FSDARWIN_WRITE,
+    OFC_FSDARWIN_NOOP
+  } OFC_FSDARWIN_OP ;
 
 typedef struct
 {
-  BLUE_FSDARWIN_OP opcode ;
+  OFC_FSDARWIN_OP opcode ;
   OFC_HANDLE hEvent ;
   OFC_HANDLE hBusy ;
   OFC_INT dwResult ;
@@ -69,7 +69,7 @@ typedef struct
   OFC_LPCVOID lpBuffer ;
   OFC_DWORD nNumberOfBytes ;
   OFC_INT fd ;
-} BLUE_FSDARWIN_OVERLAPPED ;
+} OFC_FSDARWIN_OVERLAPPED ;
 
 OFC_HANDLE OfcFSDarwinAIOFreeQ ;
 static OFC_INT g_instance ;
@@ -81,7 +81,7 @@ static OFC_INT g_instance ;
 typedef struct
 {
   OFC_UINT32 file_errno ;
-  OFC_UINT32 blue_error ;
+  OFC_UINT32 ofc_error ;
 } ERRNO2FILE ;
 
 #define ERRNO2FILE_MAX 34
@@ -131,9 +131,9 @@ static OFC_UINT32 TranslateError (OFC_UINT32 file_errno)
   OFC_INT low ;
   OFC_INT high ;
   OFC_INT cursor ;
-  OFC_UINT32 blue_error ;
+  OFC_UINT32 ofc_error ;
 
-  blue_error = OFC_ERROR_GEN_FAILURE ;
+  ofc_error = OFC_ERROR_GEN_FAILURE ;
   low = 0 ;
   high = ERRNO2FILE_MAX - 1 ;
   cursor = high + low / 2 ;
@@ -146,9 +146,9 @@ static OFC_UINT32 TranslateError (OFC_UINT32 file_errno)
       cursor = high + low / 2 ;
     }
   if (errno2file[cursor].file_errno == file_errno)
-    blue_error = errno2file[cursor].blue_error ;
+    ofc_error = errno2file[cursor].ofc_error ;
 
-  return (blue_error) ;
+  return (ofc_error) ;
 }
 
 static int Win32DesiredAccessToDarwinFlags (OFC_DWORD dwDesiredAccess)
@@ -277,12 +277,12 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
                                          OFC_HANDLE hTemplateFile)
 {
   OFC_HANDLE ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   int oflag ;
   mode_t mode ;
   OFC_CHAR *lpAsciiName ;
 
-  context = ofc_malloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
+  context = ofc_malloc (sizeof (OFC_FS_DARWIN_CONTEXT)) ;
   context->fd = -1 ;
   context->deleteOnClose = OFC_FALSE ;
   context->backup = OFC_FALSE ;
@@ -306,8 +306,8 @@ static OFC_HANDLE OfcFSDarwinCreateFile (OFC_LPCTSTR lpFileName,
       context->fd = open (lpAsciiName, oflag, mode) ;
       if (context->fd < 0)
 	{
-	  BlueThreadSetVariable (OfcLastError, 
-				 (OFC_DWORD_PTR) TranslateError(errno)) ;
+	  ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
 	  ofc_free (context->name) ;
 	  ofc_free (context) ;
 	  ret = OFC_INVALID_HANDLE_VALUE ;
@@ -343,8 +343,8 @@ OfcFSDarwinCreateDirectory (OFC_LPCTSTR lpPathName,
   ofc_free (lpAsciiName) ;
   if (status < 0)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
       ret = OFC_FALSE ;
     }
   else
@@ -361,16 +361,16 @@ static OFC_BOOL OfcFSDarwinWriteFile (OFC_HANDLE hFile,
 {
   OFC_BOOL ret ;
   ssize_t status ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FS_DARWIN_CONTEXT *context ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
 
   ret = OFC_FALSE ;
   context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -386,14 +386,14 @@ static OFC_BOOL OfcFSDarwinWriteFile (OFC_HANDLE hFile,
 	  Overlapped->fd = context->fd ;
 	  Overlapped->lpBuffer = lpBuffer ;
 	  Overlapped->nNumberOfBytes = nNumberOfBytesToWrite ;
-	  Overlapped->opcode = BLUE_FSDARWIN_WRITE ;
+	  Overlapped->opcode = OFC_FSDARWIN_WRITE ;
 
 	  ofc_trace ("aio_write 0x%08x\n", 
 		      (OFC_INT) Overlapped->offset) ;
 
 	  ofc_event_set (Overlapped->hBusy) ;
 
-	  BlueThreadSetVariable (OfcLastError, (OFC_DWORD_PTR) 
+	  ofc_thread_set_variable (OfcLastError, (OFC_DWORD_PTR)
 				 TranslateError(EINPROGRESS)) ;
 
 	  ofc_handle_unlock (hOverlapped) ;
@@ -411,8 +411,8 @@ static OFC_BOOL OfcFSDarwinWriteFile (OFC_HANDLE hFile,
 	    }
 	  else
 	    {
-	      BlueThreadSetVariable (OfcLastError, 
-				     (OFC_DWORD_PTR) TranslateError(errno)) ;
+	      ofc_thread_set_variable (OfcLastError,
+                                   (OFC_DWORD_PTR) TranslateError(errno)) ;
 	      ret = OFC_FALSE ;
 	    }
 	}
@@ -432,16 +432,16 @@ static OFC_BOOL OfcFSDarwinReadFile (OFC_HANDLE hFile,
 {
   OFC_BOOL ret ;
   ssize_t status ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FS_DARWIN_CONTEXT *context ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
 
   ret = OFC_FALSE ;
   context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -458,15 +458,15 @@ static OFC_BOOL OfcFSDarwinReadFile (OFC_HANDLE hFile,
 	  Overlapped->fd = context->fd ;
 	  Overlapped->lpBuffer = lpBuffer ;
 	  Overlapped->nNumberOfBytes = nNumberOfBytesToRead ;
-	  Overlapped->opcode = BLUE_FSDARWIN_READ ;
+	  Overlapped->opcode = OFC_FSDARWIN_READ ;
 
 	  ofc_trace ("aio_read 0x%08x\n", 
 		      (OFC_INT) Overlapped->offset) ;
 
 	  ofc_event_set (Overlapped->hBusy) ;
 
-	  BlueThreadSetVariable (OfcLastError, 
-				 (OFC_DWORD_PTR) TranslateError(EINPROGRESS)) ;
+	  ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EINPROGRESS)) ;
 
 	  ofc_handle_unlock (hOverlapped) ;
 	  ret = OFC_FALSE ;
@@ -485,10 +485,10 @@ static OFC_BOOL OfcFSDarwinReadFile (OFC_HANDLE hFile,
 	    {
 	      ret = OFC_FALSE ;
 	      if(status == 0)
-		BlueThreadSetVariable (OfcLastError, (OFC_DWORD_PTR) 
+		ofc_thread_set_variable (OfcLastError, (OFC_DWORD_PTR)
 				       OFC_ERROR_HANDLE_EOF) ;
 	      else
-		BlueThreadSetVariable (OfcLastError, (OFC_DWORD_PTR) 
+		ofc_thread_set_variable (OfcLastError, (OFC_DWORD_PTR)
 				       TranslateError(errno)) ;
 	    }
 	}
@@ -504,15 +504,15 @@ static OFC_BOOL OfcFSDarwinCloseHandle (OFC_HANDLE hFile)
 {
   OFC_BOOL ret ;
   int status ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
 
   ret = OFC_FALSE ;
   context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -540,8 +540,8 @@ static OFC_BOOL OfcFSDarwinCloseHandle (OFC_HANDLE hFile)
       else
 	{
 	  ret = OFC_FALSE ;
-	  BlueThreadSetVariable (OfcLastError, 
-				 (OFC_DWORD_PTR) TranslateError(errno)) ;
+	  ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
 	}
       ofc_handle_unlock (hFile) ;
     }
@@ -565,8 +565,8 @@ static OFC_BOOL OfcFSDarwinDeleteFile (OFC_LPCTSTR lpFileName)
 
   if (status < 0)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
       ret = OFC_FALSE ;
     }
 
@@ -587,8 +587,8 @@ static OFC_BOOL OfcFSDarwinRemoveDirectory (OFC_LPCTSTR lpPathName)
   if (status < 0)
     {
       ret = OFC_FALSE ;
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -637,15 +637,15 @@ static OFC_BOOL GetWin32FindFileData (OFC_CHAR *asciiName,
       /*
        * Next is create time
        */
-      EpochTimeToFileTime (sb.st_mtimespec.tv_sec, 
-			   sb.st_mtimespec.tv_nsec,
-			   &lpFindFileData->ftCreateTime) ;
-      EpochTimeToFileTime (sb.st_atimespec.tv_sec,
-			   sb.st_atimespec.tv_nsec, 
-			   &lpFindFileData->ftLastAccessTime) ;
-      EpochTimeToFileTime (sb.st_ctimespec.tv_sec,
-			   sb.st_ctimespec.tv_nsec, 
-			   &lpFindFileData->ftLastWriteTime) ;
+      epoch_time_to_file_time (sb.st_mtimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec,
+                               &lpFindFileData->ftCreateTime) ;
+      epoch_time_to_file_time (sb.st_atimespec.tv_sec,
+                               sb.st_atimespec.tv_nsec,
+                               &lpFindFileData->ftLastAccessTime) ;
+      epoch_time_to_file_time (sb.st_ctimespec.tv_sec,
+                               sb.st_ctimespec.tv_nsec,
+                               &lpFindFileData->ftLastWriteTime) ;
       lpFindFileData->nFileSizeHigh = sb.st_size >> 32 ;
       lpFindFileData->nFileSizeLow = sb.st_size & 0xFFFFFFFF ;
 
@@ -658,8 +658,8 @@ static OFC_BOOL GetWin32FindFileData (OFC_CHAR *asciiName,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -708,14 +708,14 @@ GetWin32FileAttributeData (OFC_CHAR *asciiName,
        * Can't believe we don't have a create time, but it looks like we
        * only have last access, modification, and status change
        */
-      EpochTimeToFileTime (sb.st_mtimespec.tv_sec,
-			   sb.st_mtimespec.tv_nsec, &fadata->ftCreateTime) ;
-      EpochTimeToFileTime (sb.st_atimespec.tv_sec,
-			   sb.st_mtimespec.tv_nsec,
-			   &fadata->ftLastAccessTime) ;
-      EpochTimeToFileTime (sb.st_ctimespec.tv_sec,
-			   sb.st_ctimespec.tv_nsec,
-			   &fadata->ftLastWriteTime) ;
+      epoch_time_to_file_time (sb.st_mtimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec, &fadata->ftCreateTime) ;
+      epoch_time_to_file_time (sb.st_atimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec,
+                               &fadata->ftLastAccessTime) ;
+      epoch_time_to_file_time (sb.st_ctimespec.tv_sec,
+                               sb.st_ctimespec.tv_nsec,
+                               &fadata->ftLastWriteTime) ;
       fadata->nFileSizeHigh = sb.st_size >> 32 ;
       fadata->nFileSizeLow = sb.st_size & 0xFFFFFFFF ;
 
@@ -723,8 +723,8 @@ GetWin32FileAttributeData (OFC_CHAR *asciiName,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
   return (ret) ;
 }
@@ -761,8 +761,8 @@ static OFC_BOOL GetWin32FileBasicInfo (int fd,
 
   if (status >= 0)
     {
-      EpochTimeToFileTime (sb.st_mtimespec.tv_sec,
-			   sb.st_mtimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_mtimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->CreationTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -776,8 +776,8 @@ static OFC_BOOL GetWin32FileBasicInfo (int fd,
       lpFileInformation->LastWriteTime.high = filetime.dwHighDateTime ;
       lpFileInformation->LastWriteTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_atimespec.tv_sec,
-			   sb.st_atimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_atimespec.tv_sec,
+                               sb.st_atimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->LastAccessTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -786,8 +786,8 @@ static OFC_BOOL GetWin32FileBasicInfo (int fd,
       lpFileInformation->LastAccessTime.high = filetime.dwHighDateTime ;
       lpFileInformation->LastAccessTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_ctimespec.tv_sec,
-			   sb.st_ctimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_ctimespec.tv_sec,
+                               sb.st_ctimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->ChangeTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -812,8 +812,8 @@ static OFC_BOOL GetWin32FileBasicInfo (int fd,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -865,8 +865,8 @@ static OFC_BOOL GetWin32FileNetworkOpenInfo (int fd,
 
   if (status >= 0)
     {
-      EpochTimeToFileTime (sb.st_mtimespec.tv_sec,
-			   sb.st_mtimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_mtimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->CreationTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -880,8 +880,8 @@ static OFC_BOOL GetWin32FileNetworkOpenInfo (int fd,
       lpFileInformation->LastWriteTime.high = filetime.dwHighDateTime ;
       lpFileInformation->LastWriteTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_atimespec.tv_sec,
-			   sb.st_atimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_atimespec.tv_sec,
+                               sb.st_atimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->LastAccessTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -890,8 +890,8 @@ static OFC_BOOL GetWin32FileNetworkOpenInfo (int fd,
       lpFileInformation->LastAccessTime.high = filetime.dwHighDateTime ;
       lpFileInformation->LastAccessTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_ctimespec.tv_sec,
-			   sb.st_ctimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_ctimespec.tv_sec,
+                               sb.st_ctimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInformation->ChangeTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -927,8 +927,8 @@ static OFC_BOOL GetWin32FileNetworkOpenInfo (int fd,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -987,8 +987,8 @@ GetWin32FileStandardInfo (int fd,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -1052,8 +1052,8 @@ GetWin32FileIdBothDirInfo (int fd,
        * This isn't right, but it's probably the closest we can do
        */
       lpFileInfo->FileIndex = 0 ;
-      EpochTimeToFileTime (sb.st_mtimespec.tv_sec,
-			   sb.st_mtimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_mtimespec.tv_sec,
+                               sb.st_mtimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInfo->CreationTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -1067,8 +1067,8 @@ GetWin32FileIdBothDirInfo (int fd,
       lpFileInfo->LastWriteTime.high = filetime.dwHighDateTime ;
       lpFileInfo->LastWriteTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_atimespec.tv_sec,
-			   sb.st_atimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_atimespec.tv_sec,
+                               sb.st_atimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInfo->LastAccessTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -1077,8 +1077,8 @@ GetWin32FileIdBothDirInfo (int fd,
       lpFileInfo->LastAccessTime.high = filetime.dwHighDateTime ;
       lpFileInfo->LastAccessTime.low = filetime.dwLowDateTime ;
 #endif
-      EpochTimeToFileTime (sb.st_ctimespec.tv_sec,
-			   sb.st_ctimespec.tv_nsec, &filetime) ;
+      epoch_time_to_file_time (sb.st_ctimespec.tv_sec,
+                               sb.st_ctimespec.tv_nsec, &filetime) ;
 #if defined(OFC_64BIT_INTEGER)
       lpFileInfo->ChangeTime = 
 	((OFC_LARGE_INTEGER) filetime.dwHighDateTime << 32) | 
@@ -1125,8 +1125,8 @@ GetWin32FileIdBothDirInfo (int fd,
     }
   else
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   return (ret) ;
@@ -1138,7 +1138,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 			  OFC_BOOL *more) 
 {
   OFC_HANDLE hRet ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   OFC_CHAR *asciiName ;
   OFC_TCHAR *tcharName ;
   struct dirent *dirent ;
@@ -1148,7 +1148,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
   OFC_LPTSTR cursor ;
   OFC_LPCTSTR filename ;
 
-  context = ofc_malloc (sizeof (BLUE_FS_DARWIN_CONTEXT)) ;
+  context = ofc_malloc (sizeof (OFC_FS_DARWIN_CONTEXT)) ;
 
   hRet = OFC_INVALID_HANDLE_VALUE ;
   if (context != OFC_NULL)
@@ -1180,7 +1180,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 	{
 	  for (dirent = readdir (context->dir) ;
 	       dirent != NULL && 
-		 !BlueFileMatch (context->pattern, dirent->d_name,
+		 !ofc_file_match (context->pattern, dirent->d_name,
 				 OFC_FILE_MATCH_PATHNAME |
 				 OFC_FILE_MATCH_CASEFOLD) ;
 	       dirent = readdir (context->dir) ) ;
@@ -1208,7 +1208,7 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 						 &context->nextDirent,
 						 &dirent) ;
 		   dirent != NULL && 
-		     !BlueFileMatch (context->pattern, dirent->d_name,
+		     !ofc_file_match (context->pattern, dirent->d_name,
 				     OFC_FILE_MATCH_PATHNAME |
 				     OFC_FILE_MATCH_CASEFOLD) ;
 		   context->nextRet = readdir_r (context->dir,
@@ -1226,8 +1226,8 @@ OfcFSDarwinFindFirstFile (OFC_LPCTSTR lpFileName,
 
       if (context->dir == NULL)
 	{
-	  BlueThreadSetVariable (OfcLastError, 
-				 (OFC_DWORD_PTR) TranslateError(errno)) ;
+	  ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
 	  ofc_free (context->name) ;
 	  if (context->pattern != NULL)
 	    ofc_free (context->pattern) ;
@@ -1246,7 +1246,7 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
                          OFC_BOOL *more)
 {
   struct dirent *dirent ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   OFC_BOOL ret ;
   OFC_CHAR *pathname ;
   OFC_SIZET len ;
@@ -1257,8 +1257,8 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
 
   if (context == OFC_NULL)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1281,7 +1281,7 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
 						 &context->nextDirent,
 						 &dirent) ;
 		   dirent != NULL && 
-		     !BlueFileMatch (context->pattern, dirent->d_name,
+		     !ofc_file_match (context->pattern, dirent->d_name,
 				     OFC_FILE_MATCH_PATHNAME |
 				     OFC_FILE_MATCH_CASEFOLD) ;
 		   context->nextRet = readdir_r (context->dir,
@@ -1297,11 +1297,11 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
 	    }
 	}
       else if (context->nextRet == 1)
-	BlueThreadSetVariable (OfcLastError, (OFC_DWORD_PTR)
+	ofc_thread_set_variable (OfcLastError, (OFC_DWORD_PTR)
 			       OFC_ERROR_NO_MORE_FILES) ;
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
 
       ofc_handle_unlock (hFindFile) ;
     }
@@ -1312,7 +1312,7 @@ OfcFSDarwinFindNextFile (OFC_HANDLE hFindFile,
 static OFC_BOOL OfcFSDarwinFindClose (OFC_HANDLE hFindFile)
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   int status ;
 
   ret = OFC_FALSE ;
@@ -1320,8 +1320,8 @@ static OFC_BOOL OfcFSDarwinFindClose (OFC_HANDLE hFindFile)
 
   if (context == OFC_NULL)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1336,8 +1336,8 @@ static OFC_BOOL OfcFSDarwinFindClose (OFC_HANDLE hFindFile)
 	  ofc_free (context) ;
 	}
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
 
       ofc_handle_unlock (hFindFile) ;
     }
@@ -1382,15 +1382,15 @@ OfcFSDarwinGetFileInformationByHandleEx
  OFC_DWORD dwBufferSize) 
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
 
   ret = OFC_FALSE ;
 
   context = ofc_handle_lock (hFile) ;
   if (context == OFC_NULL)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1434,7 +1434,7 @@ OfcFSDarwinGetFileInformationByHandleEx
 	  break ;
 
 	case OfcFileNameInfo:
-	  if (dwBufferSize >= sizeof (OFC_FILE_NAME_INFO) - sizeof(BLUE_WCHAR))
+	  if (dwBufferSize >= sizeof (OFC_FILE_NAME_INFO) - sizeof(OFC_WCHAR))
 	    {
 	      ret = GetWin32FileNameInfo (context->fd, context->name,
 					  lpFileInformation, 
@@ -1464,7 +1464,7 @@ OfcFSDarwinGetFileInformationByHandleEx
 
 	case OfcFileIdBothDirectoryInfo:
 	  if (dwBufferSize >= sizeof (OFC_FILE_ID_BOTH_DIR_INFO) - 
-	      sizeof (BLUE_WCHAR))
+	      sizeof (OFC_WCHAR))
 	    {
 	      ret = GetWin32FileIdBothDirInfo (context->fd, context->name,
 					       lpFileInformation, 
@@ -1474,7 +1474,7 @@ OfcFSDarwinGetFileInformationByHandleEx
 
 	case OfcFileAllInfo:
 	  if (dwBufferSize >= sizeof (OFC_FILE_ALL_INFO) - 
-	      sizeof (BLUE_WCHAR))
+	      sizeof (OFC_WCHAR))
 	    {
 	      OFC_FILE_ALL_INFO *lpAllInformation =
 		(OFC_FILE_ALL_INFO *) lpFileInformation ;
@@ -1561,8 +1561,8 @@ static OFC_BOOL OfcFSDarwinMoveFile (OFC_LPCTSTR lpExistingFileName,
 
   if (status < 0)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(errno)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(errno)) ;
       ret = OFC_FALSE ;
     }
 
@@ -1571,7 +1571,7 @@ static OFC_BOOL OfcFSDarwinMoveFile (OFC_LPCTSTR lpExistingFileName,
 
 OFC_HANDLE OfcFSDarwinGetOverlappedEvent (OFC_HANDLE hOverlapped)
 {
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
   OFC_HANDLE hRet ;
 
   hRet = OFC_HANDLE_NULL ;
@@ -1586,15 +1586,15 @@ OFC_HANDLE OfcFSDarwinGetOverlappedEvent (OFC_HANDLE hOverlapped)
 
 static OFC_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
 {
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
   OFC_HANDLE hRet ;
 
   hRet = OFC_HANDLE_NULL ;
 
-  hRet = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
+  hRet = (OFC_HANDLE) ofc_dequeue (OfcFSDarwinAIOFreeQ) ;
   if (hRet == OFC_HANDLE_NULL)
     {
-      Overlapped = ofc_malloc (sizeof (BLUE_FSDARWIN_OVERLAPPED)) ;
+      Overlapped = ofc_malloc (sizeof (OFC_FSDARWIN_OVERLAPPED)) ;
       if (Overlapped != OFC_NULL)
 	{
 	  hRet = ofc_handle_create (OFC_HANDLE_FSDARWIN_OVERLAPPED,
@@ -1603,12 +1603,12 @@ static OFC_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
 	  Overlapped->hEvent = ofc_event_create (OFC_EVENT_MANUAL) ;
 	  Overlapped->hBusy = ofc_event_create (OFC_EVENT_AUTO) ;
 
-	  Overlapped->hThread = BlueThreadCreate (&OfcFSDarwinAIOThread,
-                                              BLUE_THREAD_AIO,
-                                              g_instance++,
-                                              Overlapped,
-                                              BLUE_THREAD_JOIN,
-                                              OFC_HANDLE_NULL) ;
+	  Overlapped->hThread = ofc_thread_create (&OfcFSDarwinAIOThread,
+                                               OFC_THREAD_AIO,
+                                               g_instance++,
+                                               Overlapped,
+                                               OFC_THREAD_JOIN,
+                                               OFC_HANDLE_NULL) ;
 	}
     }
 
@@ -1626,13 +1626,13 @@ static OFC_HANDLE OfcFSDarwinCreateOverlapped (OFC_VOID)
 
 OFC_VOID OfcFSDarwinDestroyOverlapped (OFC_HANDLE hOverlapped)
 {
-  BlueQenqueue (OfcFSDarwinAIOFreeQ, (OFC_VOID *) hOverlapped) ;
+  ofc_enqueue (OfcFSDarwinAIOFreeQ, (OFC_VOID *) hOverlapped) ;
 }
 
 OFC_VOID OfcFSDarwinSetOverlappedOffset (OFC_HANDLE hOverlapped,
                                          OFC_OFFT offset)
 {
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
 
   Overlapped = ofc_handle_lock (hOverlapped) ;
   if (Overlapped != OFC_NULL)
@@ -1648,8 +1648,8 @@ OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
                                 OFC_LPDWORD lpNumberOfBytesTransferred,
                                 OFC_BOOL bWait)
 {
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   OFC_BOOL ret ;
 
   ret = OFC_FALSE ;
@@ -1657,8 +1657,8 @@ OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1672,8 +1672,8 @@ OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
 	    {
 	      if (Overlapped->dwResult < 0)
 		{
-		  BlueThreadSetVariable (OfcLastError, 
-					 (OFC_DWORD_PTR) 
+		  ofc_thread_set_variable (OfcLastError,
+                                   (OFC_DWORD_PTR)
 					 TranslateError(Overlapped->Errno)) ;
 		}
 	      else
@@ -1684,8 +1684,8 @@ OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
 	    }
 	  else
 	    {
-	      BlueThreadSetVariable (OfcLastError, 
-				     (OFC_DWORD_PTR) 
+	      ofc_thread_set_variable (OfcLastError,
+                                   (OFC_DWORD_PTR)
 				     TranslateError(EINPROGRESS)) ;
 	    }
 	  ofc_handle_unlock (hOverlapped) ;
@@ -1701,7 +1701,7 @@ OfcFSDarwinGetOverlappedResult (OFC_HANDLE hFile,
 static OFC_BOOL OfcFSDarwinSetEndOfFile (OFC_HANDLE hFile)
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   off_t offset ;
   int status ;
 
@@ -1710,8 +1710,8 @@ static OFC_BOOL OfcFSDarwinSetEndOfFile (OFC_HANDLE hFile)
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1725,12 +1725,12 @@ static OFC_BOOL OfcFSDarwinSetEndOfFile (OFC_HANDLE hFile)
 	  if (status == 0)
 	    ret = OFC_TRUE ;
 	  else
-	    BlueThreadSetVariable (OfcLastError, 
-				   (OFC_DWORD_PTR) TranslateError(errno)) ;
+	    ofc_thread_set_variable (OfcLastError,
+                                 (OFC_DWORD_PTR) TranslateError(errno)) ;
 	}
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   if (context != OFC_NULL)
@@ -1760,15 +1760,15 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
                                        OFC_DWORD dwBufferSize)
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
 
   ret = OFC_FALSE ;
   context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1794,8 +1794,8 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
 		if (ftruncate (context->fd, offset) == 0)
 		  ret = OFC_TRUE ;
 		else
-		  BlueThreadSetVariable (OfcLastError, 
-					 (OFC_DWORD_PTR) 
+		  ofc_thread_set_variable (OfcLastError,
+                                   (OFC_DWORD_PTR)
 					 TranslateError(errno)) ;
 	      }
 	  }
@@ -1847,7 +1847,7 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
 		if (status == 0)
 		  ret = OFC_TRUE ;
 		else
-		  BlueThreadSetVariable 
+		  ofc_thread_set_variable
 		    (OfcLastError, 
 		     (OFC_DWORD_PTR) TranslateError(errno)) ;
 	      }
@@ -1871,13 +1871,13 @@ OfcFSDarwinSetFileInformationByHandle (OFC_HANDLE hFile,
 		    if (status == 0)
 		      ret = OFC_TRUE ;
 		    else
-		      BlueThreadSetVariable (OfcLastError, 
-					     (OFC_DWORD_PTR) 
+		      ofc_thread_set_variable (OfcLastError,
+                                       (OFC_DWORD_PTR)
 					     TranslateError(errno)) ;
 		  }
 		else
-		  BlueThreadSetVariable (OfcLastError, 
-					 (OFC_DWORD_PTR) TranslateError(errno)) ;
+		  ofc_thread_set_variable (OfcLastError,
+                                   (OFC_DWORD_PTR) TranslateError(errno)) ;
 	      }
 	  }
 	  break ;
@@ -1910,7 +1910,7 @@ static OFC_DWORD OfcFSDarwinSetFilePointer (OFC_HANDLE hFile,
                                             OFC_DWORD dwMoveMethod)
 {
   OFC_DWORD ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   off_t offset ;
   int whence ;
 
@@ -1919,8 +1919,8 @@ static OFC_DWORD OfcFSDarwinSetFilePointer (OFC_HANDLE hFile,
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -1947,8 +1947,8 @@ static OFC_DWORD OfcFSDarwinSetFilePointer (OFC_HANDLE hFile,
       if (offset >= 0)
 	ret = (OFC_DWORD) (offset & 0xFFFFFFFF) ;
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
 
     }
 
@@ -1996,8 +1996,8 @@ OfcFSDarwinGetDiskFreeSpace (OFC_LPCTSTR lpRootPathName,
       *lpTotalNumberOfClusters = (OFC_DWORD) fsstat.f_blocks ;
     }
   else
-    BlueThreadSetVariable (OfcLastError, 
-			   (OFC_DWORD_PTR) TranslateError(errno)) ;
+    ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
 
   return (ret) ;
 }
@@ -2058,8 +2058,8 @@ OfcFSDarwinGetVolumeInformation (OFC_LPCTSTR lpRootPathName,
 	*lpFileSystemFlags = fsstat.f_flags ;
     }
   else
-    BlueThreadSetVariable (OfcLastError, 
-			   (OFC_DWORD_PTR) TranslateError(errno)) ;
+    ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
 
   return (ret) ;
 }
@@ -2088,7 +2088,7 @@ static OFC_BOOL OfcFSDarwinUnlockFileEx (OFC_HANDLE hFile,
                                          OFC_HANDLE hOverlapped)
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   int status ;
 
   ret = OFC_FALSE ;
@@ -2096,8 +2096,8 @@ static OFC_BOOL OfcFSDarwinUnlockFileEx (OFC_HANDLE hFile,
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -2105,8 +2105,8 @@ static OFC_BOOL OfcFSDarwinUnlockFileEx (OFC_HANDLE hFile,
       if (status == 0)
 	ret = OFC_TRUE ;
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   if (context != OFC_NULL)
@@ -2141,7 +2141,7 @@ static OFC_BOOL OfcFSDarwinLockFileEx (OFC_HANDLE hFile, OFC_DWORD flags,
                                        OFC_HANDLE lpOverlapped)
 {
   OFC_BOOL ret ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
   int status ;
   int operation ;
 
@@ -2150,8 +2150,8 @@ static OFC_BOOL OfcFSDarwinLockFileEx (OFC_HANDLE hFile, OFC_DWORD flags,
 
   if (context != OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
@@ -2166,8 +2166,8 @@ static OFC_BOOL OfcFSDarwinLockFileEx (OFC_HANDLE hFile, OFC_DWORD flags,
       if (status == 0)
 	ret = OFC_TRUE ;
       else
-	BlueThreadSetVariable (OfcLastError, 
-			       (OFC_DWORD_PTR) TranslateError(errno)) ;
+	ofc_thread_set_variable (OfcLastError,
+                             (OFC_DWORD_PTR) TranslateError(errno)) ;
     }
 
   if (context != OFC_NULL)
@@ -2220,15 +2220,15 @@ static OFC_FILE_FSINFO OfcFSDarwinInfo =
 static OFC_DWORD 
 OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context)
 {
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
   
   Overlapped = context ;
 
-  while (!BlueThreadIsDeleting (hThread))
+  while (!ofc_thread_is_deleting (hThread))
     {
       ofc_event_wait (Overlapped->hBusy) ;
       Overlapped->Errno = 0 ;
-      if (Overlapped->opcode == BLUE_FSDARWIN_READ)
+      if (Overlapped->opcode == OFC_FSDARWIN_READ)
 	{
 	  Overlapped->dwResult = 
 	    (OFC_INT) pread (Overlapped->fd,
@@ -2237,7 +2237,7 @@ OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context)
 			      Overlapped->offset) ;
 
 	}
-      else if (Overlapped->opcode == BLUE_FSDARWIN_WRITE)
+      else if (Overlapped->opcode == OFC_FSDARWIN_WRITE)
 	{
 	  Overlapped->dwResult = 
 	    (OFC_INT) pwrite (Overlapped->fd,
@@ -2245,7 +2245,7 @@ OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context)
 			       Overlapped->nNumberOfBytes,
 			       Overlapped->offset) ;
 	}
-      if (Overlapped->opcode != BLUE_FSDARWIN_NOOP)
+      if (Overlapped->opcode != OFC_FSDARWIN_NOOP)
 	{
 	  if (Overlapped->dwResult < 0)
 	    Overlapped->Errno = errno ;
@@ -2255,30 +2255,30 @@ OfcFSDarwinAIOThread (OFC_HANDLE hThread, OFC_VOID *context)
   return (0) ;
 }
 
-OFC_VOID BlueFSDarwinStartup (OFC_VOID)
+OFC_VOID OfcFSDarwinStartup (OFC_VOID)
 {
   ofc_fs_register (OFC_FST_DARWIN, &OfcFSDarwinInfo) ;
 
-  OfcFSDarwinAIOFreeQ = BlueQcreate() ;
+  OfcFSDarwinAIOFreeQ = ofc_queue_create() ;
   g_instance = 0 ;
 }
 
-OFC_VOID BlueFSDarwinShutdown (OFC_VOID)
+OFC_VOID OfcFSDarwinShutdown (OFC_VOID)
 {
   OFC_HANDLE hOverlapped ;
-  BLUE_FSDARWIN_OVERLAPPED *Overlapped ;
+  OFC_FSDARWIN_OVERLAPPED *Overlapped ;
 
-  for (hOverlapped = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ) ;
+  for (hOverlapped = (OFC_HANDLE) ofc_dequeue (OfcFSDarwinAIOFreeQ) ;
        hOverlapped != OFC_HANDLE_NULL ;
-       hOverlapped = (OFC_HANDLE) BlueQdequeue (OfcFSDarwinAIOFreeQ))
+       hOverlapped = (OFC_HANDLE) ofc_dequeue (OfcFSDarwinAIOFreeQ))
     {
       Overlapped = ofc_handle_lock (hOverlapped) ;
       if (Overlapped != OFC_NULL)
 	{
-	  BlueThreadDelete (Overlapped->hThread);
-	  Overlapped->opcode = BLUE_FSDARWIN_NOOP ;
+	  ofc_thread_delete (Overlapped->hThread);
+	  Overlapped->opcode = OFC_FSDARWIN_NOOP ;
 	  ofc_event_set (Overlapped->hBusy) ;
-	  BlueThreadWait (Overlapped->hThread);
+	  ofc_thread_wait (Overlapped->hThread);
 	  
 	  ofc_event_destroy(Overlapped->hEvent);
 	  ofc_event_destroy(Overlapped->hBusy);
@@ -2287,22 +2287,22 @@ OFC_VOID BlueFSDarwinShutdown (OFC_VOID)
 	  ofc_handle_unlock(hOverlapped);
 	}
     }
-  BlueQdestroy(OfcFSDarwinAIOFreeQ);
+  ofc_queue_destroy(OfcFSDarwinAIOFreeQ);
   OfcFSDarwinAIOFreeQ = OFC_HANDLE_NULL;
 }
 
 int OfcFSDarwinGetFD (OFC_HANDLE hFile)
 {
   int fd ;
-  BLUE_FS_DARWIN_CONTEXT *context ;
+  OFC_FS_DARWIN_CONTEXT *context ;
 
   fd = -1 ;
   context = ofc_handle_lock (hFile) ;
 
   if (context == OFC_NULL || context->backup)
     {
-      BlueThreadSetVariable (OfcLastError, 
-			     (OFC_DWORD_PTR) TranslateError(EPERM)) ;
+      ofc_thread_set_variable (OfcLastError,
+                               (OFC_DWORD_PTR) TranslateError(EPERM)) ;
     }
   else
     {
