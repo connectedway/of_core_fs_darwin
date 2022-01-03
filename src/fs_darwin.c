@@ -1123,7 +1123,7 @@ OfcFSDarwinFindFirstFile(OFC_LPCTSTR lpFileName,
                 ofc_free(context->pattern);
             ofc_free(context);
         } else
-            hRet = ofc_handle_create(OFC_HANDLE_FSWIN32_FILE, context);
+            hRet = ofc_handle_create(OFC_HANDLE_FSDARWIN_FILE, context);
     }
 
     return (hRet);
