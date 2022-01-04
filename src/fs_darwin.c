@@ -646,7 +646,7 @@ GetWin32FileAttributeData(OFC_CHAR *asciiName,
         epoch_time_to_file_time(sb.st_mtimespec.tv_sec,
                                 sb.st_mtimespec.tv_nsec, &fadata->ftCreateTime);
         epoch_time_to_file_time(sb.st_atimespec.tv_sec,
-                                sb.st_mtimespec.tv_nsec,
+                                sb.st_atimespec.tv_nsec,
                                 &fadata->ftLastAccessTime);
         epoch_time_to_file_time(sb.st_ctimespec.tv_sec,
                                 sb.st_ctimespec.tv_nsec,
