@@ -12,8 +12,6 @@ set(SRCS
         src/fs_match.c
         )
 
-add_library(of_core_fs_darwin STATIC ${SRCS})
-
-set_target_properties(of_core_fs_darwin PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(of_core_fs_darwin PROPERTIES SOVERSION 1)
+add_library(of_core_fs_darwin OBJECT ${SRCS})
+set_property(TARGET of_core_fs_darwin PROPERTY POSITION_INDEPENDENT_CODE ON)
 
