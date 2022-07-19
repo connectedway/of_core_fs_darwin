@@ -1251,148 +1251,177 @@ OfcFSDarwinGetFileInformationByHandleEx
         (OFC_HANDLE hFile,
          OFC_FILE_INFO_BY_HANDLE_CLASS FileInformationClass,
          OFC_LPVOID lpFileInformation,
-         OFC_DWORD dwBufferSize) {
-    OFC_BOOL ret;
-    OFC_FS_DARWIN_CONTEXT *context;
+         OFC_DWORD dwBufferSize)
+{
+  OFC_BOOL ret;
+  OFC_FS_DARWIN_CONTEXT *context;
 
-    ret = OFC_FALSE;
+  ret = OFC_FALSE;
 
-    context = ofc_handle_lock(hFile);
-    if (context == OFC_NULL) {
-        ofc_thread_set_variable(OfcLastError,
-                                (OFC_DWORD_PTR) TranslateError(EPERM));
-    } else {
-        switch (FileInformationClass) {
-            case OfcFileNetworkOpenInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_NETWORK_OPEN_INFO)) {
-                    ret = GetWin32FileNetworkOpenInfo(context->fd,
-                                                      context->name,
-                                                      lpFileInformation);
-                }
-                break;
-
-            case OfcFileInternalInformation:
-                if (dwBufferSize >= sizeof(OFC_FILE_INTERNAL_INFO)) {
-                    ret = GetWin32FileInternalInfo(context->fd,
-                                                   context->name,
-                                                   lpFileInformation);
-                }
-                break;
-
-            case OfcFileBasicInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_BASIC_INFO)) {
-                    ret = GetWin32FileBasicInfo(context->fd,
+  context = ofc_handle_lock(hFile);
+  if (context == OFC_NULL)
+    {
+      ofc_thread_set_variable(OfcLastError,
+                              (OFC_DWORD_PTR) TranslateError(EPERM));
+    }
+  else
+    {
+      switch (FileInformationClass)
+        {
+        case OfcFileNetworkOpenInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_NETWORK_OPEN_INFO))
+            {
+              ret = GetWin32FileNetworkOpenInfo(context->fd,
                                                 context->name,
                                                 lpFileInformation);
+            }
+          break;
+
+        case OfcFileInternalInformation:
+          if (dwBufferSize >= sizeof(OFC_FILE_INTERNAL_INFO))
+            {
+              ret = GetWin32FileInternalInfo(context->fd,
+                                             context->name,
+                                             lpFileInformation);
+            }
+          break;
+
+        case OfcFileBasicInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_BASIC_INFO))
+            {
+              ret = GetWin32FileBasicInfo(context->fd,
+                                          context->name,
+                                          lpFileInformation);
+            }
+          break;
+
+        case OfcFileStandardInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_STANDARD_INFO))
+            {
+              ret = GetWin32FileStandardInfo(context->fd,
+                                             context->name,
+                                             lpFileInformation,
+                                             context->deleteOnClose);
+            }
+          break;
+
+        case OfcFileNameInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_NAME_INFO) - sizeof(OFC_WCHAR))
+            {
+              ret = GetWin32FileNameInfo(context->fd, context->name,
+                                         lpFileInformation,
+                                         dwBufferSize);
+            }
+          break;
+
+        case OfcFileEaInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_EA_INFO))
+            {
+              OFC_FILE_EA_INFO *lpFileEaInfo =
+                (OFC_FILE_EA_INFO *) lpFileInformation;
+              lpFileEaInfo->EaSize = 0;
+              ret = OFC_TRUE;
+            }
+          break;
+
+        case OfcFileEndOfFileInfo:
+        case OfcFileRenameInfo:
+        case OfcFileDispositionInfo:
+        case OfcFileAllocationInfo:
+        case OfcFileInfoStandard:
+          /*
+           * These are for sets. They don't apply for get
+           */
+          break;
+
+        default:
+        case OfcFileStreamInfo:
+        case OfcFileCompressionInfo:
+        case OfcFileAttributeTagInfo:
+        case OfcFileIdBothDirectoryRestartInfo:
+          /*
+           * These are not supported
+           */
+          break;
+
+        case OfcFileIdBothDirectoryInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_ID_BOTH_DIR_INFO) -
+              sizeof(OFC_WCHAR))
+            {
+              ret = GetWin32FileIdBothDirInfo(context->fd, context->name,
+                                              lpFileInformation,
+                                              dwBufferSize);
+            }
+          break;
+
+        case OfcFileAllInfo:
+          if (dwBufferSize >= sizeof(OFC_FILE_ALL_INFO) -
+              sizeof(OFC_WCHAR))
+            {
+              OFC_FILE_ALL_INFO *lpAllInformation =
+                (OFC_FILE_ALL_INFO *) lpFileInformation;
+
+              ret = GetWin32FileBasicInfo(context->fd,
+                                          context->name,
+                                          &lpAllInformation->BasicInfo);
+              if (ret)
+                {
+                  ret = GetWin32FileStandardInfo(context->fd,
+                                                 context->name,
+                                                 &lpAllInformation->StandardInfo,
+                                                 context->deleteOnClose);
                 }
-                break;
-
-            case OfcFileStandardInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_STANDARD_INFO)) {
-                    ret = GetWin32FileStandardInfo(context->fd,
-                                                   context->name,
-                                                   lpFileInformation,
-                                                   context->deleteOnClose);
+              if (ret)
+                {
+                  ret = GetWin32FileInternalInfo(context->fd,
+                                                 context->name,
+                                                 &lpAllInformation->InternalInfo);
                 }
-                break;
-
-            case OfcFileNameInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_NAME_INFO) - sizeof(OFC_WCHAR)) {
-                    ret = GetWin32FileNameInfo(context->fd, context->name,
-                                               lpFileInformation,
-                                               dwBufferSize);
-                }
-                break;
-
-            case OfcFileEndOfFileInfo:
-            case OfcFileRenameInfo:
-            case OfcFileDispositionInfo:
-            case OfcFileAllocationInfo:
-            case OfcFileInfoStandard:
-                /*
-                 * These are for sets. They don't apply for get
-                 */
-                break;
-
-            default:
-            case OfcFileStreamInfo:
-            case OfcFileCompressionInfo:
-            case OfcFileAttributeTagInfo:
-            case OfcFileIdBothDirectoryRestartInfo:
-                /*
-                 * These are not supported
-                 */
-                break;
-
-            case OfcFileIdBothDirectoryInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_ID_BOTH_DIR_INFO) -
-                                    sizeof(OFC_WCHAR)) {
-                    ret = GetWin32FileIdBothDirInfo(context->fd, context->name,
-                                                    lpFileInformation,
-                                                    dwBufferSize);
-                }
-                break;
-
-            case OfcFileAllInfo:
-                if (dwBufferSize >= sizeof(OFC_FILE_ALL_INFO) -
-                                    sizeof(OFC_WCHAR)) {
-                    OFC_FILE_ALL_INFO *lpAllInformation =
-                            (OFC_FILE_ALL_INFO *) lpFileInformation;
-
-                    ret = GetWin32FileBasicInfo(context->fd,
-                                                context->name,
-                                                &lpAllInformation->BasicInfo);
-                    if (ret) {
-                        ret = GetWin32FileStandardInfo(context->fd,
-                                                       context->name,
-                                                       &lpAllInformation->StandardInfo,
-                                                       context->deleteOnClose);
+              if (ret)
+                {
+                  lpAllInformation->EAInfo.EaSize = 0;
+                  if (lpAllInformation->BasicInfo.FileAttributes &
+                      OFC_FILE_ATTRIBUTE_DIRECTORY)
+                    {
+                      lpAllInformation->AccessInfo.AccessFlags =
+                        OFC_FILE_LIST_DIRECTORY |
+                        OFC_FILE_ADD_FILE |
+                        OFC_FILE_ADD_SUBDIRECTORY |
+                        OFC_FILE_DELETE_CHILD |
+                        OFC_FILE_READ_ATTRIBUTES |
+                        OFC_FILE_WRITE_ATTRIBUTES |
+                        OFC_DELETE;
                     }
-                    if (ret) {
-                        ret = GetWin32FileInternalInfo(context->fd,
-                                                       context->name,
-                                                       &lpAllInformation->InternalInfo);
+                  else
+                    {
+                      lpAllInformation->AccessInfo.AccessFlags =
+                        OFC_FILE_READ_DATA |
+                        OFC_FILE_WRITE_DATA |
+                        OFC_FILE_APPEND_DATA |
+                        OFC_FILE_EXECUTE |
+                        OFC_FILE_READ_ATTRIBUTES |
+                        OFC_FILE_WRITE_ATTRIBUTES |
+                        OFC_DELETE;
                     }
-                    if (ret) {
-                        lpAllInformation->EAInfo.EaSize = 0;
-                        if (lpAllInformation->BasicInfo.FileAttributes &
-                            OFC_FILE_ATTRIBUTE_DIRECTORY) {
-                            lpAllInformation->AccessInfo.AccessFlags =
-                                    OFC_FILE_LIST_DIRECTORY |
-                                    OFC_FILE_ADD_FILE |
-                                    OFC_FILE_ADD_SUBDIRECTORY |
-                                    OFC_FILE_DELETE_CHILD |
-                                    OFC_FILE_READ_ATTRIBUTES |
-                                    OFC_FILE_WRITE_ATTRIBUTES |
-                                    OFC_DELETE;
-                        } else {
-                            lpAllInformation->AccessInfo.AccessFlags =
-                                    OFC_FILE_READ_DATA |
-                                    OFC_FILE_WRITE_DATA |
-                                    OFC_FILE_APPEND_DATA |
-                                    OFC_FILE_EXECUTE |
-                                    OFC_FILE_READ_ATTRIBUTES |
-                                    OFC_FILE_WRITE_ATTRIBUTES |
-                                    OFC_DELETE;
-                        }
-                        lpAllInformation->PositionInfo.CurrentByteOffset = 0;
-                        lpAllInformation->ModeInfo.Mode = 0;
-                        lpAllInformation->AlignmentInfo.AlignmentRequirement = 0;
-                    }
-                    if (ret) {
-                        ret = GetWin32FileNameInfo(context->fd,
-                                                   context->name,
-                                                   &lpAllInformation->NameInfo,
-                                                   dwBufferSize -
-                                                   sizeof(OFC_FILE_ALL_INFO));
-                    }
+                  lpAllInformation->PositionInfo.CurrentByteOffset = 0;
+                  lpAllInformation->ModeInfo.Mode = 0;
+                  lpAllInformation->AlignmentInfo.AlignmentRequirement = 0;
                 }
-                break;
+              if (ret)
+                {
+                  ret = GetWin32FileNameInfo(context->fd,
+                                             context->name,
+                                             &lpAllInformation->NameInfo,
+                                             dwBufferSize -
+                                             sizeof(OFC_FILE_ALL_INFO));
+                }
+            }
+          break;
         }
-        ofc_handle_unlock(hFile);
+      ofc_handle_unlock(hFile);
     }
 
-    return (ret);
+  return (ret);
 }
 
 static OFC_BOOL OfcFSDarwinMoveFile(OFC_LPCTSTR lpExistingFileName,
