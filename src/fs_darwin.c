@@ -1114,10 +1114,9 @@ OfcFSDarwinFindFirstFile(OFC_LPCTSTR lpFileName,
                 }
             }
         }
-
         if (context->dir == NULL) {
             ofc_thread_set_variable(OfcLastError,
-                                    (OFC_DWORD_PTR) TranslateError(errno));
+                                    OFC_ERROR_FILE_NOT_FOUND);
             ofc_free(context->name);
             if (context->pattern != NULL)
                 ofc_free(context->pattern);
@@ -1181,8 +1180,10 @@ OfcFSDarwinFindNextFile(OFC_HANDLE hFindFile,
             ofc_thread_set_variable(OfcLastError, (OFC_DWORD_PTR)
                     OFC_ERROR_NO_MORE_FILES);
         else
+          {
             ofc_thread_set_variable(OfcLastError,
                                     (OFC_DWORD_PTR) TranslateError(errno));
+          }
 
         ofc_handle_unlock(hFindFile);
     }
